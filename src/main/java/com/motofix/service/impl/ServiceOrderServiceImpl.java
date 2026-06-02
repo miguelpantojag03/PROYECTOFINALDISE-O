@@ -73,6 +73,9 @@ public class ServiceOrderServiceImpl implements ServiceOrderService {
     @Override
     public ServiceOrderResponse changeStatus(Long id, OrderStatus status) {
         ServiceOrder order = getOrder(id);
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+            throw new BusinessException("Cancelled orders cannot be changed");
+        }
         order.setStatus(status);
         if (status == OrderStatus.FINISHED) {
             order.setFinishedAt(LocalDateTime.now());
@@ -83,6 +86,7 @@ public class ServiceOrderServiceImpl implements ServiceOrderService {
     @Override
     public ServiceOrderResponse assignMechanic(Long id, Long mechanicId) {
         ServiceOrder order = getOrder(id);
+        ensureEditable(order);
         Mechanic mechanic = mechanicRepository.findById(mechanicId)
                 .orElseThrow(() -> new ResourceNotFoundException("Mechanic not found"));
         order.setMechanic(mechanic);
@@ -93,6 +97,7 @@ public class ServiceOrderServiceImpl implements ServiceOrderService {
     @Override
     public ServiceOrderResponse registerDiagnostic(Long id, String diagnostic) {
         ServiceOrder order = getOrder(id);
+        ensureEditable(order);
         if (order.getMechanic() != null) {
             order.getMechanic().diagnoseMotorcycle(order, diagnostic);
         } else {
@@ -105,8 +110,12 @@ public class ServiceOrderServiceImpl implements ServiceOrderService {
     @Override
     public ServiceOrderResponse addService(Long id, Long serviceId) {
         ServiceOrder order = getOrder(id);
+        ensureEditable(order);
         ServiceMaintenance service = serviceMaintenanceRepository.findById(serviceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Maintenance service not found"));
+        if (order.getServices().stream().anyMatch(existing -> existing.getId().equals(serviceId))) {
+            throw new BusinessException("Service is already attached to this order");
+        }
         order.getServices().add(service);
         return serviceOrderMapper.toResponse(order);
     }
@@ -114,8 +123,12 @@ public class ServiceOrderServiceImpl implements ServiceOrderService {
     @Override
     public ServiceOrderResponse addSparePart(Long id, Long sparePartId) {
         ServiceOrder order = getOrder(id);
+        ensureEditable(order);
         SparePart sparePart = sparePartRepository.findById(sparePartId)
                 .orElseThrow(() -> new ResourceNotFoundException("Spare part not found"));
+        if (order.getSpareParts().stream().anyMatch(existing -> existing.getId().equals(sparePartId))) {
+            throw new BusinessException("Spare part is already attached to this order");
+        }
         Inventory inventory = inventoryRepository.findBySparePartId(sparePartId)
                 .orElseThrow(() -> new ResourceNotFoundException("Inventory record not found"));
         if (inventory.getStock() <= 0) {
@@ -151,5 +164,11 @@ public class ServiceOrderServiceImpl implements ServiceOrderService {
     private ServiceOrder getOrder(Long id) {
         return serviceOrderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Service order not found"));
+    }
+
+    private void ensureEditable(ServiceOrder order) {
+        if (order.getStatus() == OrderStatus.FINISHED || order.getStatus() == OrderStatus.CANCELLED) {
+            throw new BusinessException("Closed orders cannot be modified");
+        }
     }
 }

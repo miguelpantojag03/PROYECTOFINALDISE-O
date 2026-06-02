@@ -57,6 +57,7 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     public SparePartResponse increaseStock(Long sparePartId, Integer quantity) {
+        validateQuantity(quantity);
         Inventory inventory = getInventory(sparePartId);
         inventory.setStock(inventory.getStock() + quantity);
         inventory.getSparePart().increaseStock(quantity);
@@ -65,6 +66,7 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     public SparePartResponse decreaseStock(Long sparePartId, Integer quantity) {
+        validateQuantity(quantity);
         Inventory inventory = getInventory(sparePartId);
         if (inventory.getStock() < quantity) {
             throw new BusinessException("Insufficient stock");
@@ -102,5 +104,11 @@ public class InventoryServiceImpl implements InventoryService {
     private Inventory getInventory(Long sparePartId) {
         return inventoryRepository.findBySparePartId(sparePartId)
                 .orElseThrow(() -> new ResourceNotFoundException("Inventory record not found"));
+    }
+
+    private void validateQuantity(Integer quantity) {
+        if (quantity == null || quantity <= 0) {
+            throw new BusinessException("Quantity must be greater than zero");
+        }
     }
 }

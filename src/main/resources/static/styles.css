@@ -399,6 +399,87 @@ th {
   font-size: 12px;
   font-weight: 700;
 }
+.filterBtn {
+  background: var(--panel);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  padding: 7px 10px;
+  font-size: 12px;
+}
+.filterBtn.selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+.kanban {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(90px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.kanbanCol {
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  border-radius: 8px;
+  padding: 11px;
+}
+.kanbanCol strong {
+  display: block;
+  font-size: 22px;
+}
+.kanbanCol span {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+.detailCard {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 9px 12px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 10px;
+}
+.detailCard span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.reportGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.reportCard {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 8px;
+  padding: 14px;
+}
+.barList { display: grid; gap: 10px; margin-top: 12px; }
+.barRow {
+  display: grid;
+  grid-template-columns: minmax(90px, 1fr) 2fr auto;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+}
+.barTrack {
+  height: 9px;
+  border-radius: 999px;
+  background: #e5eeeb;
+  overflow: hidden;
+}
+.barTrack div {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
 .miniList {
   display: grid;
   gap: 8px;
@@ -476,6 +557,7 @@ hr {
   .loginMedia { min-height: 340px; }
   .topbar, .topActions { align-items: stretch; flex-direction: column; }
   .searchBox { width: 100%; }
+  .kanban, .reportGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 560px) {
@@ -486,4 +568,5 @@ hr {
   .formRow { grid-template-columns: 1fr; }
   .loginCard { padding: 20px; }
   .toolbar { align-items: flex-start; flex-direction: column; }
+  .kanban, .reportGrid, .barRow { grid-template-columns: 1fr; }
 }

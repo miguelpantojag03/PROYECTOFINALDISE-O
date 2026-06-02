@@ -3,6 +3,7 @@ const state = {
   user: null,
   view: "dashboard",
   query: "",
+  filters: {},
   cache: { users: [], motorcycles: [], orders: [], services: [], parts: [], payments: [], reports: {} }
 };
 
@@ -163,6 +164,24 @@ function table(columns, rows) {
   }</tbody></table></div>`;
 }
 
+function escapeCsv(value) {
+  const text = String(value ?? "").replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function exportCsv(name, columns, rows) {
+  const filtered = filterRows(rows);
+  const header = columns.map(column => escapeCsv(column[0])).join(",");
+  const body = filtered.map(row => columns.map(column => escapeCsv(column[1](row))).join(",")).join("\n");
+  const blob = new Blob([`${header}\n${body}`], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${name}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 function filterRows(rows) {
   const query = state.query.trim().toLowerCase();
   if (!query) return rows;
@@ -184,6 +203,29 @@ function formSelect(name, label, optionsHtml) {
 
 function viewToolbar(items) {
   return `<div class="toolbar"><div class="toolbarGroup">${items.map(item => `<span class="chip">${item}</span>`).join("")}</div></div>`;
+}
+
+function filterButtons(name, options) {
+  const active = state.filters[state.view] || "ALL";
+  return `<div class="toolbarGroup">${options.map(([value, label]) =>
+    `<button type="button" class="filterBtn ${active === value ? "selected" : ""}" data-filter-name="${name}" data-filter-value="${value}">${label}</button>`
+  ).join("")}</div>`;
+}
+
+function bindFilterButtons() {
+  document.querySelectorAll("[data-filter-value]").forEach(button => button.addEventListener("click", () => {
+    state.filters[state.view] = button.dataset.filterValue;
+    render();
+  }));
+}
+
+function activeFilter() {
+  return state.filters[state.view] || "ALL";
+}
+
+function filteredBy(rows, predicate) {
+  const filter = activeFilter();
+  return filter === "ALL" ? rows : rows.filter(row => predicate(row, filter));
 }
 
 function emptyToNull(value) {
@@ -273,7 +315,8 @@ function dashboard() {
 function users() {
   const mechanics = state.cache.users.filter(u => u.role === "ROLE_MECHANIC").length;
   const customers = state.cache.users.filter(u => u.role === "ROLE_CUSTOMER").length;
-  $("dataView").innerHTML = `${viewToolbar([`${customers} clientes`, `${mechanics} mecanicos`, `${state.cache.users.length} usuarios`])}${table([
+  const rows = filteredBy(state.cache.users, (user, filter) => user.role === filter);
+  const columns = [
     ["ID", u => u.id],
     ["Usuario", u => entity(u.name, u.email)],
     ["Email", u => u.email],
@@ -284,7 +327,13 @@ function users() {
       <button class="secondary" data-user-role="${u.id}">Rol</button>
       <button class="danger" data-user-delete="${u.id}">Eliminar</button>
     </div>`]
-  ], state.cache.users)}`;
+  ];
+  $("dataView").innerHTML = `
+    ${viewToolbar([`${customers} clientes`, `${mechanics} mecanicos`, `${state.cache.users.length} usuarios`])}
+    <div class="toolbar">${filterButtons("role", [["ALL", "Todos"], ["ROLE_CUSTOMER", "Clientes"], ["ROLE_MECHANIC", "Mecanicos"], ["ROLE_ADMINISTRATOR", "Admins"]])}<button class="iconButton" id="exportUsers">Exportar CSV</button></div>
+    ${table(columns, rows)}`;
+  bindFilterButtons();
+  $("exportUsers").addEventListener("click", () => exportCsv("usuarios-motofix", columns, rows));
   $("actionPanel").innerHTML = `
     <form id="userCreateForm" class="formGrid">
       <h2>Nuevo usuario</h2>
@@ -332,7 +381,8 @@ function users() {
 }
 
 function motorcycles() {
-  $("dataView").innerHTML = `${viewToolbar([`${state.cache.motorcycles.length} motos`, `${state.cache.users.filter(u => u.role === "ROLE_CUSTOMER").length} clientes disponibles`])}${table([
+  const rows = filteredBy(state.cache.motorcycles, (moto, filter) => filter === "WITH_PLATE" ? Boolean(moto.plate) : !moto.plate);
+  const columns = [
     ["ID", m => m.id],
     ["Moto", m => entity(`${m.brand} ${m.model}`, m.vin || "Sin VIN")],
     ["Placa", m => m.plate || ""],
@@ -343,7 +393,13 @@ function motorcycles() {
       <button data-moto-mileage="${m.id}">Km</button>
       <button class="danger" data-moto-delete="${m.id}">Eliminar</button>
     </div>`]
-  ], state.cache.motorcycles)}`;
+  ];
+  $("dataView").innerHTML = `
+    ${viewToolbar([`${state.cache.motorcycles.length} motos`, `${state.cache.users.filter(u => u.role === "ROLE_CUSTOMER").length} clientes disponibles`])}
+    <div class="toolbar">${filterButtons("plate", [["ALL", "Todas"], ["WITH_PLATE", "Con placa"], ["NO_PLATE", "Sin placa"]])}<button class="iconButton" id="exportMotorcycles">Exportar CSV</button></div>
+    ${table(columns, rows)}`;
+  bindFilterButtons();
+  $("exportMotorcycles").addEventListener("click", () => exportCsv("motocicletas-motofix", columns, rows));
   $("actionPanel").innerHTML = `
     <form id="motoForm" class="formGrid">
       <h2>Nueva motocicleta</h2>
@@ -376,7 +432,8 @@ function motorcycles() {
 function orders() {
   const open = state.cache.orders.filter(o => !["FINISHED", "CANCELLED"].includes(o.status)).length;
   const finished = state.cache.orders.filter(o => o.status === "FINISHED").length;
-  $("dataView").innerHTML = `${viewToolbar([`${open} abiertas`, `${finished} finalizadas`, `${money(state.cache.orders.reduce((s, o) => s + Number(o.total || 0), 0))} en ordenes`])}${table([
+  const rows = filteredBy(state.cache.orders, (order, filter) => order.status === filter);
+  const columns = [
     ["ID", o => o.id],
     ["Cliente", o => entity(o.customerName, `#${o.customerId}`)],
     ["Moto", o => entity(o.motorcycle, `Moto #${o.motorcycleId}`)],
@@ -384,13 +441,21 @@ function orders() {
     ["Estado", o => statusPill(o.status)],
     ["Total", o => money(o.total)],
     ["Acciones", o => `<div class="actions">
+      <button data-action="detail" data-id="${o.id}">Detalle</button>
       <button data-action="total" data-id="${o.id}">Total</button>
       <button data-action="progress" data-id="${o.id}">En progreso</button>
       <button data-action="parts" data-id="${o.id}">Esperando</button>
       <button data-action="finish" data-id="${o.id}">Finalizar</button>
       <button class="secondary" data-action="cancel" data-id="${o.id}">Cancelar</button>
     </div>`]
-  ], state.cache.orders)}`;
+  ];
+  $("dataView").innerHTML = `
+    ${viewToolbar([`${open} abiertas`, `${finished} finalizadas`, `${money(state.cache.orders.reduce((s, o) => s + Number(o.total || 0), 0))} en ordenes`])}
+    <div class="kanban">${["PENDING", "DIAGNOSIS", "IN_PROGRESS", "WAITING_FOR_PARTS", "FINISHED", "CANCELLED"].map(status => `<div class="kanbanCol"><strong>${state.cache.orders.filter(o => o.status === status).length}</strong><span>${status}</span></div>`).join("")}</div>
+    <div class="toolbar">${filterButtons("status", [["ALL", "Todas"], ["PENDING", "Pendientes"], ["DIAGNOSIS", "Diagnostico"], ["IN_PROGRESS", "En progreso"], ["WAITING_FOR_PARTS", "Esperando"], ["FINISHED", "Finalizadas"], ["CANCELLED", "Canceladas"]])}<button class="iconButton" id="exportOrders">Exportar CSV</button></div>
+    ${table(columns, rows)}`;
+  bindFilterButtons();
+  $("exportOrders").addEventListener("click", () => exportCsv("ordenes-motofix", columns, rows));
   bindOrderActions();
   $("actionPanel").innerHTML = `
     <form id="createOrderForm" class="formGrid">
@@ -420,7 +485,8 @@ function orders() {
 }
 
 function services() {
-  $("dataView").innerHTML = `${viewToolbar([`${state.cache.services.length} servicios`, `${money(state.cache.services.reduce((s, item) => s + Number(item.calculatedCost || 0), 0))} costo catalogo`])}${table([
+  const rows = filteredBy(state.cache.services, (service, filter) => service.type === filter);
+  const columns = [
     ["ID", s => s.id],
     ["Servicio", s => entity(s.name, s.description)],
     ["Tipo", s => statusPill(s.type)],
@@ -431,7 +497,13 @@ function services() {
       <button data-service-edit="${s.id}">Editar</button>
       <button class="danger" data-service-delete="${s.id}">Eliminar</button>
     </div>`]
-  ], state.cache.services)}`;
+  ];
+  $("dataView").innerHTML = `
+    ${viewToolbar([`${state.cache.services.length} servicios`, `${money(state.cache.services.reduce((s, item) => s + Number(item.calculatedCost || 0), 0))} costo catalogo`])}
+    <div class="toolbar">${filterButtons("type", [["ALL", "Todos"], ["OIL_CHANGE", "Aceite"], ["BRAKE_REPAIR", "Frenos"], ["GENERAL_INSPECTION", "Inspeccion"]])}<button class="iconButton" id="exportServices">Exportar CSV</button></div>
+    ${table(columns, rows)}`;
+  bindFilterButtons();
+  $("exportServices").addEventListener("click", () => exportCsv("servicios-motofix", columns, rows));
   const serviceFields = `
     ${input("name", "Nombre", "text", "", "required")}
     ${input("basePrice", "Precio base", "number", "0", "required step='0.01'")}
@@ -468,7 +540,8 @@ function services() {
 
 function inventory() {
   const low = state.cache.parts.filter(p => Number(p.stock || 0) <= 3).length;
-  $("dataView").innerHTML = `${viewToolbar([`${state.cache.parts.length} repuestos`, `${low} stock bajo`, `${state.cache.parts.reduce((s, p) => s + Number(p.stock || 0), 0)} unidades`])}${table([
+  const rows = filteredBy(state.cache.parts, (part, filter) => filter === "LOW" ? Number(part.stock || 0) <= 3 : Number(part.stock || 0) > 3);
+  const columns = [
     ["ID", p => p.id],
     ["Repuesto", p => entity(p.name, p.sku || "Sin SKU")],
     ["Marca", p => p.brand || ""],
@@ -480,7 +553,13 @@ function inventory() {
       <button data-part-edit="${p.id}">Editar</button>
       <button class="danger" data-part-delete="${p.id}">Eliminar</button>
     </div>`]
-  ], state.cache.parts)}`;
+  ];
+  $("dataView").innerHTML = `
+    ${viewToolbar([`${state.cache.parts.length} repuestos`, `${low} stock bajo`, `${state.cache.parts.reduce((s, p) => s + Number(p.stock || 0), 0)} unidades`])}
+    <div class="toolbar">${filterButtons("stock", [["ALL", "Todos"], ["LOW", "Stock bajo"], ["OK", "Stock OK"]])}<button class="iconButton" id="exportInventory">Exportar CSV</button></div>
+    ${table(columns, rows)}`;
+  bindFilterButtons();
+  $("exportInventory").addEventListener("click", () => exportCsv("inventario-motofix", columns, rows));
   $("actionPanel").innerHTML = `
     <form id="partForm" class="formGrid">
       <h2>Nuevo repuesto</h2>
@@ -529,14 +608,21 @@ function inventory() {
 
 function payments() {
   const confirmed = state.cache.payments.filter(p => p.status === "CONFIRMED").length;
-  $("dataView").innerHTML = `${viewToolbar([`${confirmed} confirmados`, `${state.cache.payments.length - confirmed} pendientes`, `${money(state.cache.payments.reduce((s, p) => s + Number(p.amount || 0), 0))} total`])}${table([
+  const rows = filteredBy(state.cache.payments, (payment, filter) => payment.status === filter);
+  const columns = [
     ["ID", p => p.id],
     ["Orden", p => p.orderId],
     ["Monto", p => money(p.amount)],
     ["Tipo", p => p.type],
     ["Estado", p => statusPill(p.status)],
     ["Acciones", p => `<div class="actions"><button data-pay="${p.id}">Confirmar</button></div>`]
-  ], state.cache.payments)}`;
+  ];
+  $("dataView").innerHTML = `
+    ${viewToolbar([`${confirmed} confirmados`, `${state.cache.payments.length - confirmed} pendientes`, `${money(state.cache.payments.reduce((s, p) => s + Number(p.amount || 0), 0))} total`])}
+    <div class="toolbar">${filterButtons("payment", [["ALL", "Todos"], ["PENDING", "Pendientes"], ["CONFIRMED", "Confirmados"], ["REJECTED", "Rechazados"]])}<button class="iconButton" id="exportPayments">Exportar CSV</button></div>
+    ${table(columns, rows)}`;
+  bindFilterButtons();
+  $("exportPayments").addEventListener("click", () => exportCsv("pagos-motofix", columns, rows));
   document.querySelectorAll("[data-pay]").forEach(btn => btn.addEventListener("click", async () => {
     await api(`/api/payments/${btn.dataset.pay}/confirm`, { method: "PATCH" });
     await loadAll(); render(); toast("Pago confirmado");
@@ -582,12 +668,52 @@ async function reports() {
     api("/api/reports/services")
   ]);
   const names = ["Ordenes", "Pagos", "Inventario", "Servicios"];
-  $("dataView").innerHTML = reports.map((rows, index) => `<h2>${names[index]}</h2>${table([
+  const allRows = reports.flat();
+  $("dataView").innerHTML = `
+    <div class="dashboardGrid">
+      <div class="dashCard"><strong>${state.cache.orders.length}</strong><span>Ordenes registradas</span></div>
+      <div class="dashCard"><strong>${money(state.cache.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0))}</strong><span>Valor en pagos</span></div>
+      <div class="dashCard"><strong>${state.cache.parts.reduce((sum, p) => sum + Number(p.stock || 0), 0)}</strong><span>Unidades en inventario</span></div>
+    </div>
+    <div class="reportGrid">${reports.map((rows, index) => `<section class="reportCard"><h2>${names[index]}</h2>${reportBars(rows)}</section>`).join("")}</div>
+    ${reports.map((rows, index) => `<h2>${names[index]}</h2>${table([
     ["Categoria", r => r.label || r.name || r.category || Object.values(r)[0]],
     ["Cantidad", r => r.count || Object.values(r)[1] || 0],
     ["Valor", r => money(r.amount || Object.values(r)[2] || 0)]
-  ], rows)}`).join("");
-  $("actionPanel").innerHTML = `<h2>Reportes</h2><p>Datos agregados desde los servicios del backend.</p>`;
+  ], rows)}`).join("")}`;
+  $("actionPanel").innerHTML = `<h2>Reportes</h2><p>Datos agregados desde los servicios del backend.</p><button class="iconButton" id="exportReports">Exportar todo</button>`;
+  $("exportReports").addEventListener("click", () => exportCsv("reportes-motofix", [["Nombre", r => r.name], ["Cantidad", r => r.count], ["Valor", r => r.amount]], allRows));
+}
+
+function reportBars(rows) {
+  if (!rows.length) return `<div class="empty">Sin datos.</div>`;
+  const max = Math.max(...rows.map(row => Number(row.count || 0)), 1);
+  return `<div class="barList">${rows.map(row => {
+    const count = Number(row.count || 0);
+    const width = Math.max(6, Math.round((count / max) * 100));
+    return `<div class="barRow"><span>${row.name}</span><div class="barTrack"><div style="width:${width}%"></div></div><strong>${count}</strong></div>`;
+  }).join("")}</div>`;
+}
+
+function orderDetail(order) {
+  return `
+    <h2>Orden #${order.id}</h2>
+    <div class="detailCard">
+      <span>Cliente</span><strong>${order.customerName || "-"}</strong>
+      <span>Moto</span><strong>${order.motorcycle || "-"}</strong>
+      <span>Mecanico</span><strong>${order.mechanicName || "Sin asignar"}</strong>
+      <span>Estado</span>${statusPill(order.status)}
+      <span>Total</span><strong>${money(order.total)}</strong>
+    </div>
+    <hr>
+    <h2>Diagnostico</h2>
+    <p>${order.diagnostic || "Sin diagnostico registrado."}</p>
+    <hr>
+    <h2>Servicios</h2>
+    <div class="miniList">${order.services?.length ? order.services.map(item => `<div class="miniItem"><strong>${item.name}</strong><span>${money(item.calculatedCost)}</span></div>`).join("") : `<div class="empty">Sin servicios.</div>`}</div>
+    <hr>
+    <h2>Repuestos</h2>
+    <div class="miniList">${order.spareParts?.length ? order.spareParts.map(item => `<div class="miniItem"><strong>${item.name}</strong><span>${money(item.unitPrice)}</span></div>`).join("") : `<div class="empty">Sin repuestos.</div>`}</div>`;
 }
 
 async function submitJson(event, path, method) {
@@ -604,6 +730,11 @@ function bindOrderActions() {
   document.querySelectorAll("[data-action]").forEach((button) => {
     button.addEventListener("click", async () => {
       const id = button.dataset.id;
+      if (button.dataset.action === "detail") {
+        const order = state.cache.orders.find(item => item.id === Number(id)) || await api(`/api/service-orders/${id}`);
+        $("actionPanel").innerHTML = orderDetail(order);
+        return;
+      }
       if (button.dataset.action === "total") {
         const result = await api(`/api/service-orders/${id}/total`);
         toast(`Total orden #${id}: ${money(result.total)}`);

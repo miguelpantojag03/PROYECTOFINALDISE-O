@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -35,6 +36,9 @@ public class PaymentServiceImpl implements PaymentService {
                 .ifPresent(existing -> {
                     throw new BusinessException("Payment already exists for this order");
                 });
+        if (order.calculateTotal().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException("Cannot register a payment for an order without charges");
+        }
         Payment payment = Payment.builder()
                 .serviceOrder(order)
                 .amount(order.calculateTotal())

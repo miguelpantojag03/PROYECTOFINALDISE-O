@@ -3,6 +3,7 @@ package com.motofix.exception;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -35,6 +36,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiError> handleInvalidJson(HttpMessageNotReadableException exception) {
         return build(HttpStatus.BAD_REQUEST, "Invalid request body", null);
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiError> handleDataIntegrity(DataIntegrityViolationException exception) {
+        return build(HttpStatus.BAD_REQUEST, "The record is linked to other data or violates a unique constraint", null);
     }
 
     @ExceptionHandler(Exception.class)
