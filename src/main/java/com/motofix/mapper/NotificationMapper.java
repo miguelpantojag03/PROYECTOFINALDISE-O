@@ -2,11 +2,11 @@ package com.motofix.mapper;
 
 import com.motofix.dto.NotificationResponse;
 import com.motofix.entity.Notification;
-import org.mapstruct.Mapper;
+import org.springframework.stereotype.Component;
 
-@Mapper(componentModel = "spring")
-public interface NotificationMapper {
-    default NotificationResponse toResponse(Notification notification) {
+@Component
+public class NotificationMapper {
+    public NotificationResponse toResponse(Notification notification) {
         return new NotificationResponse(
                 notification.getId(),
                 notification.getUser().getId(),

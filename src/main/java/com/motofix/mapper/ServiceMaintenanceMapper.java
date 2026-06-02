@@ -2,11 +2,11 @@ package com.motofix.mapper;
 
 import com.motofix.dto.ServiceMaintenanceResponse;
 import com.motofix.entity.ServiceMaintenance;
-import org.mapstruct.Mapper;
+import org.springframework.stereotype.Component;
 
-@Mapper(componentModel = "spring")
-public interface ServiceMaintenanceMapper {
-    default ServiceMaintenanceResponse toResponse(ServiceMaintenance service) {
+@Component
+public class ServiceMaintenanceMapper {
+    public ServiceMaintenanceResponse toResponse(ServiceMaintenance service) {
         if (service == null) {
             return null;
         }

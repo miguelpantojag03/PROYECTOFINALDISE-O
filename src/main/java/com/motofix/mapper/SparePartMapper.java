@@ -3,11 +3,11 @@ package com.motofix.mapper;
 import com.motofix.dto.SparePartResponse;
 import com.motofix.entity.Inventory;
 import com.motofix.entity.SparePart;
-import org.mapstruct.Mapper;
+import org.springframework.stereotype.Component;
 
-@Mapper(componentModel = "spring")
-public interface SparePartMapper {
-    default SparePartResponse toResponse(SparePart sparePart, Inventory inventory) {
+@Component
+public class SparePartMapper {
+    public SparePartResponse toResponse(SparePart sparePart, Inventory inventory) {
         if (sparePart == null) {
             return null;
         }

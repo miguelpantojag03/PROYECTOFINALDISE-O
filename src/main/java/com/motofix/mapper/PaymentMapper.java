@@ -2,11 +2,11 @@ package com.motofix.mapper;
 
 import com.motofix.dto.PaymentResponse;
 import com.motofix.entity.Payment;
-import org.mapstruct.Mapper;
+import org.springframework.stereotype.Component;
 
-@Mapper(componentModel = "spring")
-public interface PaymentMapper {
-    default PaymentResponse toResponse(Payment payment) {
+@Component
+public class PaymentMapper {
+    public PaymentResponse toResponse(Payment payment) {
         return new PaymentResponse(
                 payment.getId(),
                 payment.getServiceOrder().getId(),

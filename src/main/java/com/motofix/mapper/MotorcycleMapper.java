@@ -2,11 +2,11 @@ package com.motofix.mapper;
 
 import com.motofix.dto.MotorcycleResponse;
 import com.motofix.entity.Motorcycle;
-import org.mapstruct.Mapper;
+import org.springframework.stereotype.Component;
 
-@Mapper(componentModel = "spring")
-public interface MotorcycleMapper {
-    default MotorcycleResponse toResponse(Motorcycle motorcycle) {
+@Component
+public class MotorcycleMapper {
+    public MotorcycleResponse toResponse(Motorcycle motorcycle) {
         if (motorcycle == null) {
             return null;
         }

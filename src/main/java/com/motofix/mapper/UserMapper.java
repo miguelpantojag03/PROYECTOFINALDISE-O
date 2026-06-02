@@ -2,11 +2,11 @@ package com.motofix.mapper;
 
 import com.motofix.dto.UserResponse;
 import com.motofix.entity.User;
-import org.mapstruct.Mapper;
+import org.springframework.stereotype.Component;
 
-@Mapper(componentModel = "spring")
-public interface UserMapper {
-    default UserResponse toResponse(User user) {
+@Component
+public class UserMapper {
+    public UserResponse toResponse(User user) {
         if (user == null) {
             return null;
         }

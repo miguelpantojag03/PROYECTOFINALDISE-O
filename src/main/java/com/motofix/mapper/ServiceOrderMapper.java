@@ -6,13 +6,13 @@ import com.motofix.entity.Inventory;
 import com.motofix.entity.ServiceOrder;
 import com.motofix.entity.SparePart;
 import com.motofix.repository.InventoryRepository;
-import org.mapstruct.Mapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-@Mapper(componentModel = "spring", uses = ServiceMaintenanceMapper.class)
-public abstract class ServiceOrderMapper {
+@Component
+public class ServiceOrderMapper {
     @Autowired
     protected ServiceMaintenanceMapper serviceMaintenanceMapper;
 
