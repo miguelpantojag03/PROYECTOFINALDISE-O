@@ -186,6 +186,26 @@ function viewToolbar(items) {
   return `<div class="toolbar"><div class="toolbarGroup">${items.map(item => `<span class="chip">${item}</span>`).join("")}</div></div>`;
 }
 
+function emptyToNull(value) {
+  return value === "" ? null : value;
+}
+
+function toPayload(form) {
+  const data = Object.fromEntries(new FormData(form).entries());
+  Object.keys(data).forEach((key) => {
+    data[key] = emptyToNull(data[key]);
+    if (["id", "customerId", "motorcycleId", "orderId", "userId", "year", "mileage", "estimatedTime", "initialStock", "checklistItems", "partId", "quantity"].includes(key) && data[key] !== null) data[key] = Number(data[key]);
+    if (["basePrice", "unitPrice", "oilQuantity", "filterCost", "padsCost", "laborCost"].includes(key) && data[key] !== null) data[key] = Number(data[key]);
+  });
+  return data;
+}
+
+async function refresh(message = "Actualizado") {
+  await loadAll();
+  render();
+  toast(message);
+}
+
 function form(title, fields, submitText, onsubmit) {
   $("actionPanel").innerHTML = `<form id="sideForm" class="formGrid"><h2>${title}</h2>${fields.join("")}<button type="submit">${submitText}</button></form>`;
   $("sideForm").addEventListener("submit", onsubmit);
@@ -258,17 +278,57 @@ function users() {
     ["Usuario", u => entity(u.name, u.email)],
     ["Email", u => u.email],
     ["Rol", u => statusPill(u.role)],
-    ["Tipo", u => u.userType || ""]
+    ["Tipo", u => u.userType || ""],
+    ["Acciones", u => `<div class="actions">
+      <button data-user-edit="${u.id}">Editar</button>
+      <button class="secondary" data-user-role="${u.id}">Rol</button>
+      <button class="danger" data-user-delete="${u.id}">Eliminar</button>
+    </div>`]
   ], state.cache.users)}`;
-  form("Nuevo usuario", [
-    input("name", "Nombre", "text", "", "required"),
-    input("email", "Email", "email", "", "required"),
-    input("password", "Clave", "password", "User12345", "required"),
-    select("role", "Rol", [["ROLE_CUSTOMER", "Cliente"], ["ROLE_MECHANIC", "Mecanico"], ["ROLE_ADMINISTRATOR", "Administrador"]]),
-    input("phone", "Telefono"),
-    input("address", "Direccion"),
-    input("specialty", "Especialidad")
-  ], "Registrar", async (e) => submitJson(e, "/api/auth/register", "POST"));
+  $("actionPanel").innerHTML = `
+    <form id="userCreateForm" class="formGrid">
+      <h2>Nuevo usuario</h2>
+      ${input("name", "Nombre", "text", "", "required")}
+      ${input("email", "Email", "email", "", "required")}
+      ${input("password", "Clave", "password", "User12345", "required")}
+      ${select("role", "Rol", [["ROLE_CUSTOMER", "Cliente"], ["ROLE_MECHANIC", "Mecanico"], ["ROLE_ADMINISTRATOR", "Administrador"]])}
+      ${input("phone", "Telefono")}
+      ${input("address", "Direccion")}
+      ${input("specialty", "Especialidad")}
+      <button type="submit">Registrar</button>
+    </form>
+    <hr>
+    <form id="userEditForm" class="formGrid">
+      <h2>Editar usuario</h2>
+      ${formSelect("id", "Usuario", optionList(state.cache.users, u => `${u.name} - #${u.id}`))}
+      ${input("name", "Nombre")}
+      ${input("email", "Email", "email")}
+      ${input("phone", "Telefono")}
+      ${input("address", "Direccion")}
+      ${input("specialty", "Especialidad")}
+      ${select("role", "Nuevo rol", [["ROLE_CUSTOMER", "Cliente"], ["ROLE_MECHANIC", "Mecanico"], ["ROLE_ADMINISTRATOR", "Administrador"]])}
+      <div class="actions">
+        <button type="submit">Guardar</button>
+        <button type="button" class="secondary" id="assignRoleBtn">Asignar rol</button>
+      </div>
+    </form>`;
+  $("userCreateForm").addEventListener("submit", async (e) => submitJson(e, "/api/auth/register", "POST"));
+  $("userEditForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const data = toPayload(e.currentTarget);
+    const id = data.id;
+    delete data.id;
+    delete data.role;
+    Object.keys(data).forEach(key => data[key] === null && delete data[key]);
+    await api(`/api/users/${id}`, { method: "PUT", body: JSON.stringify(data) });
+    await refresh("Usuario actualizado");
+  });
+  $("assignRoleBtn").addEventListener("click", async () => {
+    const data = toPayload($("userEditForm"));
+    await api(`/api/users/${data.id}/role?role=${data.role}`, { method: "PATCH" });
+    await refresh("Rol actualizado");
+  });
+  bindUserActions();
 }
 
 function motorcycles() {
@@ -278,17 +338,39 @@ function motorcycles() {
     ["Placa", m => m.plate || ""],
     ["Ano", m => m.year || ""],
     ["Km", m => m.mileage || 0],
-    ["Cliente", m => m.customerName || m.customerId]
+    ["Cliente", m => m.customerName || m.customerId],
+    ["Acciones", m => `<div class="actions">
+      <button data-moto-mileage="${m.id}">Km</button>
+      <button class="danger" data-moto-delete="${m.id}">Eliminar</button>
+    </div>`]
   ], state.cache.motorcycles)}`;
-  form("Nueva motocicleta", [
-    input("brand", "Marca", "text", "", "required"),
-    input("model", "Modelo", "text", "", "required"),
-    input("year", "Ano", "number", new Date().getFullYear()),
-    input("mileage", "Kilometraje", "number", "0"),
-    input("plate", "Placa"),
-    input("vin", "VIN"),
-    formSelect("customerId", "Cliente", optionList(state.cache.users.filter(u => u.role === "ROLE_CUSTOMER"), u => `${u.name} - #${u.id}`))
-  ], "Crear moto", async (e) => submitJson(e, "/api/motorcycles", "POST"));
+  $("actionPanel").innerHTML = `
+    <form id="motoForm" class="formGrid">
+      <h2>Nueva motocicleta</h2>
+      ${input("brand", "Marca", "text", "", "required")}
+      ${input("model", "Modelo", "text", "", "required")}
+      ${input("year", "Ano", "number", new Date().getFullYear())}
+      ${input("mileage", "Kilometraje", "number", "0")}
+      ${input("plate", "Placa")}
+      ${input("vin", "VIN")}
+      ${formSelect("customerId", "Cliente", optionList(state.cache.users.filter(u => u.role === "ROLE_CUSTOMER"), u => `${u.name} - #${u.id}`))}
+      <button type="submit">Crear moto</button>
+    </form>
+    <hr>
+    <form id="mileageForm" class="formGrid">
+      <h2>Actualizar kilometraje</h2>
+      ${formSelect("id", "Motocicleta", optionList(state.cache.motorcycles, m => `${m.brand} ${m.model} ${m.plate || ""} - #${m.id}`))}
+      ${input("mileage", "Nuevo kilometraje", "number", "0", "required")}
+      <button type="submit">Actualizar km</button>
+    </form>`;
+  $("motoForm").addEventListener("submit", async (e) => submitJson(e, "/api/motorcycles", "POST"));
+  $("mileageForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const data = toPayload(e.currentTarget);
+    await api(`/api/motorcycles/${data.id}/mileage?mileage=${data.mileage}`, { method: "PATCH" });
+    await refresh("Kilometraje actualizado");
+  });
+  bindMotorcycleActions();
 }
 
 function orders() {
@@ -302,6 +384,9 @@ function orders() {
     ["Estado", o => statusPill(o.status)],
     ["Total", o => money(o.total)],
     ["Acciones", o => `<div class="actions">
+      <button data-action="total" data-id="${o.id}">Total</button>
+      <button data-action="progress" data-id="${o.id}">En progreso</button>
+      <button data-action="parts" data-id="${o.id}">Esperando</button>
       <button data-action="finish" data-id="${o.id}">Finalizar</button>
       <button class="secondary" data-action="cancel" data-id="${o.id}">Cancelar</button>
     </div>`]
@@ -341,22 +426,44 @@ function services() {
     ["Tipo", s => statusPill(s.type)],
     ["Base", s => money(s.basePrice)],
     ["Calculado", s => money(s.calculatedCost)],
-    ["Tiempo", s => `${s.estimatedTime || 0} min`]
+    ["Tiempo", s => `${s.estimatedTime || 0} min`],
+    ["Acciones", s => `<div class="actions">
+      <button data-service-edit="${s.id}">Editar</button>
+      <button class="danger" data-service-delete="${s.id}">Eliminar</button>
+    </div>`]
   ], state.cache.services)}`;
-  form("Nuevo servicio", [
-    input("name", "Nombre", "text", "", "required"),
-    input("basePrice", "Precio base", "number", "0", "required step='0.01'"),
-    input("estimatedTime", "Tiempo estimado", "number", "60"),
-    select("type", "Tipo", [["OIL_CHANGE", "Cambio de aceite"], ["BRAKE_REPAIR", "Reparacion de frenos"], ["GENERAL_INSPECTION", "Inspeccion general"]]),
-    input("oilType", "Tipo de aceite"),
-    input("oilQuantity", "Cantidad aceite", "number", "0", "step='0.01'"),
-    input("filterCost", "Costo filtro", "number", "0", "step='0.01'"),
-    input("brakeType", "Tipo de freno"),
-    input("padsCost", "Costo pastillas", "number", "0", "step='0.01'"),
-    input("laborCost", "Mano de obra", "number", "0", "step='0.01'"),
-    input("inspectionLevel", "Nivel inspeccion"),
-    input("checklistItems", "Items checklist", "number", "0")
-  ], "Crear servicio", async (e) => submitJson(e, "/api/maintenance-services", "POST"));
+  const serviceFields = `
+    ${input("name", "Nombre", "text", "", "required")}
+    ${input("basePrice", "Precio base", "number", "0", "required step='0.01'")}
+    ${input("estimatedTime", "Tiempo estimado", "number", "60")}
+    ${select("type", "Tipo", [["OIL_CHANGE", "Cambio de aceite"], ["BRAKE_REPAIR", "Reparacion de frenos"], ["GENERAL_INSPECTION", "Inspeccion general"]])}
+    ${input("oilType", "Tipo de aceite")}
+    ${input("oilQuantity", "Cantidad aceite", "number", "0", "step='0.01'")}
+    ${input("filterCost", "Costo filtro", "number", "0", "step='0.01'")}
+    ${input("brakeType", "Tipo de freno")}
+    ${input("padsCost", "Costo pastillas", "number", "0", "step='0.01'")}
+    ${input("laborCost", "Mano de obra", "number", "0", "step='0.01'")}
+    ${input("inspectionLevel", "Nivel inspeccion")}
+    ${input("checklistItems", "Items checklist", "number", "0")}`;
+  $("actionPanel").innerHTML = `
+    <form id="serviceCreateForm" class="formGrid"><h2>Nuevo servicio</h2>${serviceFields}<button type="submit">Crear servicio</button></form>
+    <hr>
+    <form id="serviceEditForm" class="formGrid">
+      <h2>Editar servicio</h2>
+      ${formSelect("id", "Servicio", optionList(state.cache.services, s => `${s.name} - #${s.id}`))}
+      ${serviceFields}
+      <button type="submit">Guardar cambios</button>
+    </form>`;
+  $("serviceCreateForm").addEventListener("submit", async (e) => submitJson(e, "/api/maintenance-services", "POST"));
+  $("serviceEditForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const data = toPayload(e.currentTarget);
+    const id = data.id;
+    delete data.id;
+    await api(`/api/maintenance-services/${id}`, { method: "PUT", body: JSON.stringify(data) });
+    await refresh("Servicio actualizado");
+  });
+  bindServiceActions();
 }
 
 function inventory() {
@@ -367,7 +474,12 @@ function inventory() {
     ["Marca", p => p.brand || ""],
     ["SKU", p => p.sku || ""],
     ["Precio", p => money(p.unitPrice)],
-    ["Stock", p => `<span class="pill ${Number(p.stock || 0) <= 3 ? "cancelled" : "active"}">${p.stock || 0}</span>`]
+    ["Stock", p => `<span class="pill ${Number(p.stock || 0) <= 3 ? "cancelled" : "active"}">${p.stock || 0}</span>`],
+    ["Acciones", p => `<div class="actions">
+      <button data-part-provider="${p.sku || ""}">Proveedor</button>
+      <button data-part-edit="${p.id}">Editar</button>
+      <button class="danger" data-part-delete="${p.id}">Eliminar</button>
+    </div>`]
   ], state.cache.parts)}`;
   $("actionPanel").innerHTML = `
     <form id="partForm" class="formGrid">
@@ -378,6 +490,17 @@ function inventory() {
       ${input("unitPrice", "Precio", "number", "0", "required step='0.01'")}
       ${input("initialStock", "Stock inicial", "number", "0", "required")}
       <button type="submit">Guardar repuesto</button>
+    </form>
+    <hr>
+    <form id="partEditForm" class="formGrid">
+      <h2>Editar repuesto</h2>
+      ${formSelect("id", "Repuesto", optionList(state.cache.parts, p => `${p.name} - #${p.id}`))}
+      ${input("name", "Nombre", "text", "", "required")}
+      ${input("brand", "Marca")}
+      ${input("sku", "SKU")}
+      ${input("unitPrice", "Precio", "number", "0", "required step='0.01'")}
+      ${input("initialStock", "Stock", "number", "0", "required")}
+      <button type="submit">Guardar cambios</button>
     </form>
     <hr>
     <form id="stockForm" class="formGrid">
@@ -392,7 +515,16 @@ function inventory() {
       </div>
     </form>`;
   $("partForm").addEventListener("submit", async (e) => submitJson(e, "/api/spare-parts", "POST"));
+  $("partEditForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const data = toPayload(e.currentTarget);
+    const id = data.id;
+    delete data.id;
+    await api(`/api/spare-parts/${id}`, { method: "PUT", body: JSON.stringify(data) });
+    await refresh("Repuesto actualizado");
+  });
   bindStockActions();
+  bindPartActions();
 }
 
 function payments() {
@@ -418,10 +550,10 @@ function payments() {
 function notifications() {
   $("dataView").innerHTML = `<div id="notificationResults" class="empty">Busca notificaciones por usuario desde el panel lateral.</div>`;
   form("Enviar notificacion", [
-    input("userId", "ID usuario", "number", "2", "required"),
+    formSelect("userId", "Usuario", optionList(state.cache.users, u => `${u.name} - #${u.id}`)),
     select("channel", "Canal", [["EMAIL", "Email"], ["SMS", "SMS"], ["PUSH", "Push"]]),
     area("message", "Mensaje"),
-    input("lookupUserId", "Buscar por usuario", "number", "2")
+    formSelect("lookupUserId", "Buscar por usuario", optionList(state.cache.users, u => `${u.name} - #${u.id}`))
   ], "Enviar", async (e) => submitJson(e, "/api/notifications", "POST"));
   const lookup = document.createElement("button");
   lookup.type = "button";
@@ -433,9 +565,11 @@ function notifications() {
       ["ID", n => n.id],
       ["Mensaje", n => n.message],
       ["Canal", n => n.channel],
-      ["Leida", n => n.readFlag ? "Si" : "No"],
-      ["Fecha", n => n.sentAt || ""]
+      ["Leida", n => n.readFlag ? statusPill("CONFIRMED") : statusPill("PENDING")],
+      ["Fecha", n => n.sentAt || ""],
+      ["Acciones", n => `<div class="actions"><button data-notification-read="${n.id}">Marcar leida</button></div>`]
     ], rows);
+    bindNotificationActions();
   });
   $("sideForm").appendChild(lookup);
 }
@@ -458,12 +592,7 @@ async function reports() {
 
 async function submitJson(event, path, method) {
   event.preventDefault();
-  const data = Object.fromEntries(new FormData(event.currentTarget).entries());
-  Object.keys(data).forEach((key) => {
-    if (data[key] === "") data[key] = null;
-    if (["customerId", "motorcycleId", "orderId", "userId", "year", "mileage", "estimatedTime", "initialStock", "checklistItems"].includes(key) && data[key] !== null) data[key] = Number(data[key]);
-    if (["basePrice", "unitPrice", "oilQuantity", "filterCost", "padsCost", "laborCost"].includes(key) && data[key] !== null) data[key] = Number(data[key]);
-  });
+  const data = toPayload(event.currentTarget);
   if (data.requiresReplacement === undefined && path.includes("maintenance-services")) data.requiresReplacement = false;
   await api(path, { method, body: JSON.stringify(data) });
   await loadAll();
@@ -474,10 +603,20 @@ async function submitJson(event, path, method) {
 function bindOrderActions() {
   document.querySelectorAll("[data-action]").forEach((button) => {
     button.addEventListener("click", async () => {
-      await api(`/api/service-orders/${button.dataset.id}/${button.dataset.action}`, { method: "PATCH" });
-      await loadAll();
-      render();
-      toast("Orden actualizada");
+      const id = button.dataset.id;
+      if (button.dataset.action === "total") {
+        const result = await api(`/api/service-orders/${id}/total`);
+        toast(`Total orden #${id}: ${money(result.total)}`);
+        return;
+      }
+      if (button.dataset.action === "progress") {
+        await api(`/api/service-orders/${id}/status?status=IN_PROGRESS`, { method: "PATCH" });
+      } else if (button.dataset.action === "parts") {
+        await api(`/api/service-orders/${id}/status?status=WAITING_FOR_PARTS`, { method: "PATCH" });
+      } else {
+        await api(`/api/service-orders/${id}/${button.dataset.action}`, { method: "PATCH" });
+      }
+      await refresh("Orden actualizada");
     });
   });
 }
@@ -516,11 +655,101 @@ function bindStockActions() {
         return;
       }
       await api(`/api/spare-parts/${Number(data.partId)}/stock/${button.dataset.stock}?quantity=${Number(data.quantity)}`, { method: "PATCH" });
-      await loadAll();
-      render();
-      toast("Stock actualizado");
+      await refresh("Stock actualizado");
     });
   });
+}
+
+function bindUserActions() {
+  document.querySelectorAll("[data-user-edit]").forEach(button => button.addEventListener("click", () => {
+    const user = state.cache.users.find(item => item.id === Number(button.dataset.userEdit));
+    if (!user) return;
+    const formEl = $("userEditForm");
+    formEl.elements.id.value = user.id;
+    formEl.elements.name.value = user.name || "";
+    formEl.elements.email.value = user.email || "";
+    formEl.elements.role.value = user.role || "ROLE_CUSTOMER";
+    toast(`Editando ${user.name}`);
+  }));
+  document.querySelectorAll("[data-user-role]").forEach(button => button.addEventListener("click", async () => {
+    const role = prompt("Nuevo rol: ROLE_CUSTOMER, ROLE_MECHANIC o ROLE_ADMINISTRATOR", "ROLE_CUSTOMER");
+    if (!role) return;
+    await api(`/api/users/${button.dataset.userRole}/role?role=${role}`, { method: "PATCH" });
+    await refresh("Rol actualizado");
+  }));
+  document.querySelectorAll("[data-user-delete]").forEach(button => button.addEventListener("click", async () => {
+    if (!confirm("Eliminar este usuario?")) return;
+    await api(`/api/users/${button.dataset.userDelete}`, { method: "DELETE" });
+    await refresh("Usuario eliminado");
+  }));
+}
+
+function bindMotorcycleActions() {
+  document.querySelectorAll("[data-moto-mileage]").forEach(button => button.addEventListener("click", () => {
+    $("mileageForm").elements.id.value = button.dataset.motoMileage;
+    toast("Motocicleta seleccionada");
+  }));
+  document.querySelectorAll("[data-moto-delete]").forEach(button => button.addEventListener("click", async () => {
+    if (!confirm("Eliminar esta motocicleta?")) return;
+    await api(`/api/motorcycles/${button.dataset.motoDelete}`, { method: "DELETE" });
+    await refresh("Motocicleta eliminada");
+  }));
+}
+
+function bindServiceActions() {
+  document.querySelectorAll("[data-service-edit]").forEach(button => button.addEventListener("click", () => {
+    const service = state.cache.services.find(item => item.id === Number(button.dataset.serviceEdit));
+    if (!service) return;
+    const formEl = $("serviceEditForm");
+    formEl.elements.id.value = service.id;
+    formEl.elements.name.value = service.name || "";
+    formEl.elements.basePrice.value = service.basePrice || 0;
+    formEl.elements.estimatedTime.value = service.estimatedTime || 0;
+    formEl.elements.type.value = service.type || "OIL_CHANGE";
+    toast(`Editando ${service.name}`);
+  }));
+  document.querySelectorAll("[data-service-delete]").forEach(button => button.addEventListener("click", async () => {
+    if (!confirm("Eliminar este servicio?")) return;
+    await api(`/api/maintenance-services/${button.dataset.serviceDelete}`, { method: "DELETE" });
+    await refresh("Servicio eliminado");
+  }));
+}
+
+function bindPartActions() {
+  document.querySelectorAll("[data-part-provider]").forEach(button => button.addEventListener("click", async () => {
+    if (!button.dataset.partProvider) {
+      toast("Este repuesto no tiene SKU");
+      return;
+    }
+    const result = await api(`/api/spare-parts/provider/${button.dataset.partProvider}/availability`);
+    toast(`${result.providerName}: ${result.available ? "disponible" : "no disponible"} (${result.stock})`);
+  }));
+  document.querySelectorAll("[data-part-edit]").forEach(button => button.addEventListener("click", () => {
+    const part = state.cache.parts.find(item => item.id === Number(button.dataset.partEdit));
+    if (!part) return;
+    const formEl = $("partEditForm");
+    formEl.elements.id.value = part.id;
+    formEl.elements.name.value = part.name || "";
+    formEl.elements.brand.value = part.brand || "";
+    formEl.elements.sku.value = part.sku || "";
+    formEl.elements.unitPrice.value = part.unitPrice || 0;
+    formEl.elements.initialStock.value = part.stock || 0;
+    toast(`Editando ${part.name}`);
+  }));
+  document.querySelectorAll("[data-part-delete]").forEach(button => button.addEventListener("click", async () => {
+    if (!confirm("Eliminar este repuesto?")) return;
+    await api(`/api/spare-parts/${button.dataset.partDelete}`, { method: "DELETE" });
+    await refresh("Repuesto eliminado");
+  }));
+}
+
+function bindNotificationActions() {
+  document.querySelectorAll("[data-notification-read]").forEach(button => button.addEventListener("click", async () => {
+    await api(`/api/notifications/${button.dataset.notificationRead}/read`, { method: "PATCH" });
+    toast("Notificacion marcada como leida");
+    const lookupButton = [...$("sideForm").querySelectorAll("button")].find(btn => btn.textContent === "Buscar notificaciones");
+    lookupButton?.click();
+  }));
 }
 
 $("loginForm").addEventListener("submit", login);

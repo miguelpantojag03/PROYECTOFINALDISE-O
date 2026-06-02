@@ -31,6 +31,10 @@ public class PaymentServiceImpl implements PaymentService {
     public PaymentResponse register(PaymentRequest request) {
         ServiceOrder order = serviceOrderRepository.findById(request.orderId())
                 .orElseThrow(() -> new ResourceNotFoundException("Service order not found"));
+        paymentRepository.findByServiceOrderId(request.orderId())
+                .ifPresent(existing -> {
+                    throw new BusinessException("Payment already exists for this order");
+                });
         Payment payment = Payment.builder()
                 .serviceOrder(order)
                 .amount(order.calculateTotal())
