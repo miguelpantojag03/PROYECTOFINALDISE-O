@@ -29,7 +29,8 @@ public class SecurityConfig {
                 .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/index.html", "/styles.css", "/app.js", "/favicon.ico", "/assets/**", "/h2-console/**").permitAll()
+                        .requestMatchers("/", "/index.html", "/styles.css", "/app.js", "/config.js", "/favicon.ico", "/assets/**", "/h2-console/**").permitAll()
+                        .requestMatchers("/api/health").permitAll()
                         .requestMatchers("/api/auth/register", "/api/auth/login", "/api/auth/validate").permitAll()
                         .anyRequest().authenticated()
                 )
