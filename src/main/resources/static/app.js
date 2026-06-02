@@ -23,6 +23,7 @@ const views = [
 ];
 
 const $ = (id) => document.getElementById(id);
+const API_BASE = (window.MOTOFIX_API_BASE_URL || "").replace(/\/$/, "");
 const money = (v) => Number(v || 0).toLocaleString("es-CO", { style: "currency", currency: "COP" });
 
 function toast(message) {
@@ -34,7 +35,7 @@ function toast(message) {
 async function api(path, options = {}) {
   const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
   if (state.token) headers.Authorization = `Bearer ${state.token}`;
-  const response = await fetch(path, { ...options, headers });
+  const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
   if (!response.ok) {
     let message = `Error ${response.status}`;
     try {

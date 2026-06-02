@@ -1,0 +1,1 @@
+window.MOTOFIX_API_BASE_URL = window.MOTOFIX_API_BASE_URL || "";
