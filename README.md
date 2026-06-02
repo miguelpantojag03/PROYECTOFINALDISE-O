@@ -43,7 +43,7 @@ customer@motofix.com / Customer12345
 mechanic@motofix.com / Mechanic12345
 ```
 
-La interfaz incluye dashboard, usuarios, motocicletas, ordenes, servicios, inventario, pagos, notificaciones y reportes.
+La interfaz incluye dashboard, usuarios, motocicletas, ordenes, servicios, inventario, pagos, notificaciones, arquitectura y reportes. La vista `Arquitectura` resume visualmente la idea de los diagramas del sistema: capas Spring, herencia de usuarios, herencia de servicios, estrategias de pago/notificacion, flujo cliente-moto-orden-servicio-pago-notificacion y trazabilidad con datos reales.
 
 ## Configuracion
 

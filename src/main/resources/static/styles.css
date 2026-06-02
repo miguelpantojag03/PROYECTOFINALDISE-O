@@ -480,6 +480,185 @@ th {
   border-radius: inherit;
   background: var(--accent);
 }
+.architectureGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.diagramPanel {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 8px;
+  padding: 14px;
+}
+.diagramPanel.wide { grid-column: 1 / -1; }
+.diagramHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+  margin-bottom: 12px;
+}
+.diagramHeader span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.processRail {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(96px, 1fr));
+  gap: 8px;
+}
+.processStep {
+  min-height: 78px;
+  border: 1px solid #cddbd7;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #ffffff, #f1f7f5);
+  padding: 10px;
+  display: grid;
+  align-content: space-between;
+  gap: 8px;
+}
+.processStep b {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #173b35;
+  color: white;
+  font-size: 12px;
+}
+.processStep span {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 750;
+}
+.layerStack { display: grid; gap: 8px; }
+.layerStack div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  border-left: 4px solid var(--accent);
+  background: var(--panel-2);
+  border-radius: 7px;
+  padding: 10px;
+}
+.layerStack small, .classNode span, .interfaceNode span, .ruleList span, .traceGrid span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.classTree { display: grid; gap: 10px; }
+.classBranches {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.classNode, .interfaceNode {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  padding: 11px;
+  display: grid;
+  gap: 5px;
+}
+.classNode.root {
+  background: #173b35;
+  border-color: #173b35;
+  color: white;
+}
+.classNode.root span { color: #cce0db; }
+.strategyGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.interfaceNode {
+  min-height: 142px;
+  align-content: start;
+  border-color: #d5c8ae;
+  background: #fffaf1;
+}
+.ruleList { display: grid; gap: 8px; }
+.ruleList div {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fbfa;
+  padding: 10px;
+  display: grid;
+  gap: 3px;
+}
+.traceGrid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+.traceGrid div {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  padding: 12px;
+}
+.traceGrid strong {
+  display: block;
+  font-size: 19px;
+  margin-bottom: 4px;
+  overflow-wrap: anywhere;
+}
+.traceOrder {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--ink);
+}
+.statusRail {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  margin: 12px 0;
+}
+.statusRail.cancelled { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.statusStep {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fbfa;
+  padding: 9px;
+  display: grid;
+  gap: 5px;
+  min-height: 66px;
+}
+.statusStep b {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #e5eeeb;
+  color: var(--muted);
+  font-size: 12px;
+}
+.statusStep span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+.statusStep.active {
+  border-color: #aed7cf;
+  background: var(--soft);
+}
+.statusStep.active b {
+  background: var(--accent);
+  color: white;
+}
+.statusStep.current {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(8, 118, 111, .2);
+}
 .miniList {
   display: grid;
   gap: 8px;
@@ -557,7 +736,10 @@ hr {
   .loginMedia { min-height: 340px; }
   .topbar, .topActions { align-items: stretch; flex-direction: column; }
   .searchBox { width: 100%; }
-  .kanban, .reportGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kanban, .reportGrid, .architectureGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .processRail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .traceGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .statusRail, .statusRail.cancelled { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 560px) {
@@ -568,5 +750,6 @@ hr {
   .formRow { grid-template-columns: 1fr; }
   .loginCard { padding: 20px; }
   .toolbar { align-items: flex-start; flex-direction: column; }
-  .kanban, .reportGrid, .barRow { grid-template-columns: 1fr; }
+  .kanban, .reportGrid, .barRow, .architectureGrid, .processRail, .classBranches, .strategyGrid, .traceGrid { grid-template-columns: 1fr; }
+  .statusRail, .statusRail.cancelled { grid-template-columns: 1fr; }
 }

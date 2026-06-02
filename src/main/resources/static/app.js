@@ -16,6 +16,7 @@ const views = [
   ["inventory", "IN", "Inventario"],
   ["payments", "PG", "Pagos"],
   ["notifications", "NT", "Notificaciones"],
+  ["architecture", "AR", "Arquitectura"],
   ["reports", "RP", "Reportes"]
 ];
 
@@ -60,6 +61,7 @@ function viewCount(id) {
     inventory: c.parts.length,
     payments: c.payments.length,
     notifications: "",
+    architecture: "",
     reports: ""
   }[id] ?? "";
 }
@@ -154,6 +156,17 @@ function statusPill(value) {
   if (["FINISHED"].includes(status)) tone = "done";
   if (["CANCELLED", "REJECTED"].includes(status)) tone = "cancelled";
   return `<span class="pill ${tone}">${status}</span>`;
+}
+
+function orderTimeline(status) {
+  const steps = ["PENDING", "DIAGNOSIS", "IN_PROGRESS", "WAITING_FOR_PARTS", "FINISHED"];
+  const current = steps.indexOf(status);
+  const cancelled = status === "CANCELLED";
+  return `<div class="statusRail ${cancelled ? "cancelled" : ""}">${steps.map((step, index) => {
+    const active = !cancelled && current >= index;
+    const currentStep = !cancelled && status === step;
+    return `<div class="statusStep ${active ? "active" : ""} ${currentStep ? "current" : ""}"><b>${index + 1}</b><span>${step}</span></div>`;
+  }).join("")}${cancelled ? `<div class="statusStep active current"><b>!</b><span>CANCELLED</span></div>` : ""}</div>`;
 }
 
 function table(columns, rows) {
@@ -272,12 +285,13 @@ function render() {
     inventory: "Repuestos, stock interno y consulta de proveedor.",
     payments: "Registro y confirmacion de pagos por orden.",
     notifications: "Envio y consulta de comunicaciones por usuario.",
+    architecture: "Vista fiel a la idea de los diagramas: capas, herencia, estrategias y flujo operativo.",
     reports: "Agregados de ordenes, pagos, inventario y servicios."
   };
   $("viewTitle").textContent = label;
   $("panelTitle").textContent = label;
   $("viewSubtitle").textContent = subtitles[state.view] || "Interfaz operativa alineada con los modulos del backend MotoFix.";
-  const renderers = { dashboard, users, motorcycles, orders, services, inventory, payments, notifications, reports };
+  const renderers = { dashboard, users, motorcycles, orders, services, inventory, payments, notifications, architecture, reports };
   renderers[state.view]();
 }
 
@@ -685,6 +699,132 @@ async function reports() {
   $("exportReports").addEventListener("click", () => exportCsv("reportes-motofix", [["Nombre", r => r.name], ["Cantidad", r => r.count], ["Valor", r => r.amount]], allRows));
 }
 
+function architecture() {
+  const c = state.cache;
+  const activeOrders = c.orders.filter(order => !["FINISHED", "CANCELLED"].includes(order.status));
+  const closedOrders = c.orders.filter(order => ["FINISHED", "CANCELLED"].includes(order.status));
+  const lowStock = c.parts.filter(part => Number(part.stock || 0) <= 3);
+  const confirmedPayments = c.payments.filter(payment => payment.status === "CONFIRMED");
+  const totalRevenue = confirmedPayments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+  const lastOrders = [...c.orders].reverse().slice(0, 5);
+  const serviceTypes = ["OIL_CHANGE", "BRAKE_REPAIR", "GENERAL_INSPECTION"];
+  const paymentTypes = ["CASH", "CARD", "TRANSFER"];
+  const notificationTypes = ["EMAIL", "SMS", "PUSH"];
+  $("dataView").innerHTML = `
+    ${viewToolbar([
+      `${c.users.length} usuarios`,
+      `${c.motorcycles.length} motos`,
+      `${activeOrders.length} ordenes activas`,
+      `${lowStock.length} alertas de stock`
+    ])}
+    <div class="architectureGrid">
+      <section class="diagramPanel wide">
+        <div class="diagramHeader">
+          <h2>Flujo del taller</h2>
+          <span>Secuencia principal</span>
+        </div>
+        <div class="processRail">
+          ${["Login JWT", "Usuario", "Moto", "Orden", "Diagnostico", "Servicio", "Repuesto", "Pago", "Notificacion", "Reporte"].map((label, index) =>
+            `<div class="processStep"><b>${String(index + 1).padStart(2, "0")}</b><span>${label}</span></div>`
+          ).join("")}
+        </div>
+      </section>
+      <section class="diagramPanel">
+        <div class="diagramHeader">
+          <h2>Capas Spring</h2>
+          <span>Controller -> DB</span>
+        </div>
+        <div class="layerStack">
+          ${["Controller REST", "DTO + Mapper", "Service", "Repository JPA", "Entity / Model", "H2 persistente"].map((label, index) =>
+            `<div><strong>${label}</strong><small>Nivel ${index + 1}</small></div>`
+          ).join("")}
+        </div>
+      </section>
+      <section class="diagramPanel">
+        <div class="diagramHeader">
+          <h2>Usuarios</h2>
+          <span>Herencia</span>
+        </div>
+        <div class="classTree">
+          <div class="classNode root"><strong>User</strong><span>abstract</span></div>
+          <div class="classBranches">
+            <div class="classNode"><strong>Customer</strong><span>${c.users.filter(u => u.role === "ROLE_CUSTOMER").length} activos</span></div>
+            <div class="classNode"><strong>Mechanic</strong><span>${c.users.filter(u => u.role === "ROLE_MECHANIC").length} activos</span></div>
+            <div class="classNode"><strong>Administrator</strong><span>${c.users.filter(u => u.role === "ROLE_ADMINISTRATOR").length} activos</span></div>
+          </div>
+        </div>
+      </section>
+      <section class="diagramPanel">
+        <div class="diagramHeader">
+          <h2>Servicios</h2>
+          <span>Polimorfismo</span>
+        </div>
+        <div class="classTree">
+          <div class="classNode root"><strong>ServiceMaintenance</strong><span>calculateCost()</span></div>
+          <div class="classBranches">
+            ${serviceTypes.map(type => `<div class="classNode"><strong>${type}</strong><span>${c.services.filter(s => s.type === type).length} registros</span></div>`).join("")}
+          </div>
+        </div>
+      </section>
+      <section class="diagramPanel">
+        <div class="diagramHeader">
+          <h2>Estrategias</h2>
+          <span>Interfaces</span>
+        </div>
+        <div class="strategyGrid">
+          <div class="interfaceNode"><strong>PaymentMethod</strong>${paymentTypes.map(type => `<span>${type}: ${c.payments.filter(p => p.type === type).length}</span>`).join("")}</div>
+          <div class="interfaceNode"><strong>NotificationDeliveryChannel</strong>${notificationTypes.map(type => `<span>${type}</span>`).join("")}</div>
+        </div>
+      </section>
+      <section class="diagramPanel">
+        <div class="diagramHeader">
+          <h2>Reglas activas</h2>
+          <span>Validaciones</span>
+        </div>
+        <div class="ruleList">
+          <div><b>Orden cerrada</b><span>No permite agregar servicios, repuestos ni diagnostico.</span></div>
+          <div><b>Pago unico</b><span>Evita duplicar pagos para la misma orden.</span></div>
+          <div><b>Stock valido</b><span>No acepta movimientos de inventario menores o iguales a cero.</span></div>
+          <div><b>Persistencia</b><span>H2 guarda datos en el directorio local data/.</span></div>
+        </div>
+      </section>
+      <section class="diagramPanel wide">
+        <div class="diagramHeader">
+          <h2>Trazabilidad del negocio</h2>
+          <span>Datos actuales</span>
+        </div>
+        <div class="traceGrid">
+          <div><strong>${c.users.filter(u => u.role === "ROLE_CUSTOMER").length}</strong><span>Clientes</span></div>
+          <div><strong>${c.motorcycles.length}</strong><span>Motos vinculadas</span></div>
+          <div><strong>${c.orders.length}</strong><span>Ordenes creadas</span></div>
+          <div><strong>${c.services.length}</strong><span>Servicios catalogo</span></div>
+          <div><strong>${c.parts.length}</strong><span>Repuestos</span></div>
+          <div><strong>${money(totalRevenue)}</strong><span>Pagos confirmados</span></div>
+        </div>
+      </section>
+    </div>`;
+  $("actionPanel").innerHTML = `
+    <h2>Lectura rapida</h2>
+    <div class="miniList">
+      <div class="miniItem"><strong>Ordenes activas</strong><span>${activeOrders.length}</span></div>
+      <div class="miniItem"><strong>Ordenes cerradas</strong><span>${closedOrders.length}</span></div>
+      <div class="miniItem"><strong>Stock bajo</strong><span>${lowStock.length}</span></div>
+      <div class="miniItem"><strong>Pagos confirmados</strong><span>${confirmedPayments.length}</span></div>
+    </div>
+    <hr>
+    <h2>Ultimas ordenes</h2>
+    <div class="miniList">${lastOrders.length ? lastOrders.map(order =>
+      `<button type="button" class="traceOrder" data-arch-order="${order.id}"><strong>#${order.id} ${order.customerName || ""}</strong>${statusPill(order.status)}</button>`
+    ).join("") : `<div class="empty">Sin ordenes registradas.</div>`}</div>
+    <hr>
+    <h2>Fidelidad al diseno</h2>
+    <p>Esta vista mantiene la idea de los diagramas: separa capas, muestra herencia, aplica interfaces y sigue el flujo cliente-moto-orden-pago-notificacion.</p>`;
+  document.querySelectorAll("[data-arch-order]").forEach(button => button.addEventListener("click", () => {
+    const order = c.orders.find(item => item.id === Number(button.dataset.archOrder));
+    if (order) $("actionPanel").innerHTML = orderDetail(order);
+  }));
+}
+
 function reportBars(rows) {
   if (!rows.length) return `<div class="empty">Sin datos.</div>`;
   const max = Math.max(...rows.map(row => Number(row.count || 0)), 1);
@@ -698,6 +838,7 @@ function reportBars(rows) {
 function orderDetail(order) {
   return `
     <h2>Orden #${order.id}</h2>
+    ${orderTimeline(order.status)}
     <div class="detailCard">
       <span>Cliente</span><strong>${order.customerName || "-"}</strong>
       <span>Moto</span><strong>${order.motorcycle || "-"}</strong>
