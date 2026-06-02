@@ -244,6 +244,17 @@ function filteredBy(rows, predicate) {
   return filter === "ALL" ? rows : rows.filter(row => predicate(row, filter));
 }
 
+function jumpTo(view) {
+  state.view = view;
+  render();
+}
+
+function bindDashboardActions() {
+  document.querySelectorAll("[data-jump-view]").forEach(button => {
+    button.addEventListener("click", () => jumpTo(button.dataset.jumpView));
+  });
+}
+
 function emptyToNull(value) {
   return value === "" ? null : value;
 }
@@ -314,6 +325,12 @@ function dashboard() {
         <span class="eyebrow">Centro de control</span>
         <h2>${activeOrders} ordenes necesitan seguimiento</h2>
         <p>Recepcion, diagnostico, repuestos, pagos y cierre conectados en una sola operacion.</p>
+        <div class="quickActions">
+          <button type="button" data-jump-view="orders">Nueva orden</button>
+          <button type="button" data-jump-view="motorcycles">Registrar moto</button>
+          <button type="button" data-jump-view="inventory">Mover stock</button>
+          <button type="button" data-jump-view="payments">Registrar pago</button>
+        </div>
       </div>
       <div class="completionGauge" style="--completion:${completion}%">
         <strong>${completion}%</strong>
@@ -336,6 +353,11 @@ function dashboard() {
     ["Total", o => money(o.total)]
   ], latest)}`;
   $("actionPanel").innerHTML = `
+    <div class="sideHero">
+      <span>Operacion en vivo</span>
+      <strong>${activeOrders}</strong>
+      <small>ordenes abiertas</small>
+    </div>
     <h2>Proceso principal</h2>
     <div class="flow"><span>Registrar cliente</span><span>Crear moto</span><span>Abrir orden</span><span>Asignar tecnico</span><span>Agregar servicio</span><span>Confirmar pago</span></div>
     <hr>
@@ -344,6 +366,7 @@ function dashboard() {
     <hr>
     <h2>Stock bajo</h2>
     <div class="miniList">${lowParts.length ? lowParts.map(p => `<div class="miniItem"><strong>${p.name}</strong><span>${p.stock || 0} und.</span></div>`).join("") : `<div class="empty">Stock saludable.</div>`}</div>`;
+  bindDashboardActions();
 }
 
 function users() {
