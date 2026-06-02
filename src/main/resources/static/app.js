@@ -484,7 +484,7 @@ function showApp(logged) {
   $("appView").classList.toggle("hidden", !logged);
   $("refreshBtn").classList.toggle("hidden", !logged);
   $("searchInput").parentElement.classList.toggle("hidden", !logged);
-  $("sessionName").textContent = logged && state.user ? `${state.user.name} - ${state.user.role}` : "Sin sesion";
+  $("sessionName").textContent = logged && state.user ? `${state.user.name} - ${state.user.role}${DEMO_MODE ? " - Demo Vercel" : ""}` : "Sin sesion";
 }
 
 async function login(event) {

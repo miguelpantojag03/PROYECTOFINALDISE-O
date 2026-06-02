@@ -1,5 +1,5 @@
 :root {
-  --bg: #f3f5f7;
+  --bg: #eef2f4;
   --ink: #101816;
   --muted: #65716f;
   --line: #d9e1df;
@@ -13,8 +13,8 @@
   --soft: #edf7f4;
   --steel: #334155;
   --blue: #2563eb;
-  --shadow: 0 22px 58px rgba(16, 24, 22, .14);
-  --shadow-soft: 0 12px 28px rgba(16, 24, 22, .08);
+  --shadow: 0 28px 70px rgba(16, 24, 22, .16);
+  --shadow-soft: 0 14px 34px rgba(16, 24, 22, .09);
 }
 
 * { box-sizing: border-box; }
@@ -23,9 +23,10 @@ body {
   font-family: "Segoe UI", Arial, sans-serif;
   color: var(--ink);
   background:
-    radial-gradient(circle at 20% 0%, rgba(0,107,98,.18), transparent 32%),
-    radial-gradient(circle at 100% 8%, rgba(210,109,35,.18), transparent 28%),
-    linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,0) 360px),
+    linear-gradient(135deg, rgba(0,107,98,.08), transparent 36%),
+    radial-gradient(circle at 12% 0%, rgba(0,107,98,.20), transparent 30%),
+    radial-gradient(circle at 96% 8%, rgba(210,109,35,.18), transparent 27%),
+    linear-gradient(180deg, rgba(255,255,255,.95), rgba(255,255,255,0) 420px),
     var(--bg);
 }
 
@@ -67,7 +68,7 @@ button.iconButton {
   top: 0;
   height: 100vh;
   background:
-    linear-gradient(180deg, #081714 0%, #12231f 50%, #1f2b20 100%);
+    linear-gradient(180deg, #061512 0%, #11251f 48%, #223323 100%);
   color: white;
   padding: 20px 15px;
   display: flex;
@@ -75,6 +76,16 @@ button.iconButton {
   gap: 18px;
   border-right: 1px solid rgba(255,255,255,.08);
 }
+.sidebar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,.055), transparent 38%),
+    radial-gradient(circle at 8% 4%, rgba(19,160,146,.18), transparent 28%);
+}
+.sidebar > * { position: relative; }
 .brand {
   display: flex;
   align-items: center;
@@ -172,12 +183,12 @@ button.iconButton {
   gap: 18px;
   align-items: center;
   margin-bottom: 20px;
-  padding: 20px 22px;
+  padding: 22px 24px;
   background:
     linear-gradient(135deg, rgba(255,255,255,.94), rgba(244,248,247,.84)),
     rgba(255,255,255,.86);
   border: 1px solid rgba(215,224,223,.88);
-  border-radius: 8px;
+  border-radius: 10px;
   box-shadow: var(--shadow-soft);
   backdrop-filter: blur(10px);
 }
@@ -216,7 +227,7 @@ p { color: var(--muted); margin-top: 5px; }
 .loginPanel {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(340px, 450px);
-  gap: 20px;
+  gap: 22px;
   align-items: stretch;
 }
 .formPanel, .brief, .mainPanel, .sidePanel, .metric {
@@ -229,7 +240,7 @@ p { color: var(--muted); margin-top: 5px; }
   position: relative;
   min-height: 620px;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
   background: #17201d;
@@ -262,6 +273,19 @@ p { color: var(--muted); margin-top: 5px; }
   line-height: 1.12;
   margin-bottom: 8px;
 }
+.loginOverlay::before {
+  content: "MotoFix System";
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 7px 11px;
+  border: 1px solid rgba(255,255,255,.22);
+  border-radius: 999px;
+  background: rgba(255,255,255,.12);
+  color: #f3f7f6;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
 .loginOverlay span {
   display: block;
   color: #d6e3df;
@@ -272,8 +296,17 @@ p { color: var(--muted); margin-top: 5px; }
 .loginCard {
   align-content: center;
   padding: 34px;
+  border: 1px solid rgba(196, 211, 207, .9);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.98), rgba(247,251,250,.96)),
+    var(--panel);
 }
 .loginCard h2 { font-size: 30px; }
+.loginHint {
+  margin-top: -6px;
+  margin-bottom: 4px;
+  line-height: 1.5;
+}
 .loginMeta {
   display: flex;
   justify-content: space-between;
@@ -313,16 +346,20 @@ textarea { resize: vertical; min-height: 78px; }
 .metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(150px, 1fr));
-  gap: 16px;
+  gap: 18px;
   margin-bottom: 18px;
 }
 .metric {
-  padding: 18px;
+  padding: 19px;
   position: relative;
   overflow: hidden;
   display: flex;
   gap: 13px;
   align-items: center;
+}
+.metric:hover, .dashCard:hover, .diagramPanel:hover, .reportCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 42px rgba(16, 24, 22, .12);
 }
 .metric::before {
   content: "";
@@ -359,6 +396,9 @@ textarea { resize: vertical; min-height: 78px; }
   align-items: start;
 }
 .mainPanel, .sidePanel { padding: 20px; }
+.mainPanel, .sidePanel, .metric, .dashCard, .diagramPanel, .reportCard, .kanbanCol, .appointmentBoard div {
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
 .mainPanel, .sidePanel {
   box-shadow: var(--shadow-soft);
 }
@@ -367,6 +407,8 @@ textarea { resize: vertical; min-height: 78px; }
   top: 24px;
   max-height: calc(100vh - 48px);
   overflow: auto;
+  background:
+    linear-gradient(180deg, #ffffff, #f8fbfa);
 }
 .panelHead {
   display: flex;
@@ -374,14 +416,27 @@ textarea { resize: vertical; min-height: 78px; }
   gap: 12px;
   align-items: center;
   margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #edf2f1;
 }
 #statusText { color: var(--muted); font-size: 13px; }
+#statusText::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 7px;
+  border-radius: 999px;
+  background: var(--good);
+  box-shadow: 0 0 0 4px rgba(21,128,61,.12);
+}
 
 .tableWrap {
   overflow-x: auto;
   border: 1px solid #e2e9e7;
   border-radius: 8px;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.75);
+  background: white;
 }
 table {
   width: 100%;
@@ -389,6 +444,8 @@ table {
   min-width: 720px;
   background: white;
 }
+thead th:first-child { border-top-left-radius: 8px; }
+thead th:last-child { border-top-right-radius: 8px; }
 th, td {
   border-bottom: 1px solid #edf2f1;
   padding: 14px 13px;
@@ -435,7 +492,7 @@ th {
   padding: 10px;
   border: 1px solid #e2e9e7;
   border-radius: 8px;
-  background: #f8fbfa;
+  background: linear-gradient(180deg, #ffffff, #f6faf8);
 }
 .toolbarGroup {
   display: flex;
@@ -806,10 +863,10 @@ hr {
   grid-template-columns: minmax(0, 1fr) 190px;
   gap: 18px;
   align-items: center;
-  padding: 24px;
+  padding: 28px;
   margin-bottom: 18px;
   border: 1px solid rgba(255,255,255,.35);
-  border-radius: 8px;
+  border-radius: 10px;
   background:
     linear-gradient(135deg, rgba(6, 48, 43, .92), rgba(12, 93, 84, .86)),
     url("/assets/workshop-login.png") center / cover;
@@ -817,6 +874,15 @@ hr {
   color: white;
   overflow: hidden;
   position: relative;
+}
+.commandCenter > * { position: relative; z-index: 1; }
+.commandCenter::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,.10), transparent 46%),
+    radial-gradient(circle at 96% 12%, rgba(255,255,255,.20), transparent 22%);
 }
 .commandCenter::after {
   content: "";
@@ -905,14 +971,14 @@ hr {
 .dashboardGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
+  gap: 16px;
   margin-bottom: 18px;
 }
 .dashCard {
   border: 1px solid var(--line);
   background: linear-gradient(180deg, #ffffff, #f6faf8);
   border-radius: 8px;
-  padding: 18px;
+  padding: 20px;
   box-shadow: var(--shadow-soft);
 }
 .dashCard strong {
@@ -969,4 +1035,13 @@ hr {
   .kanban, .reportGrid, .barRow, .architectureGrid, .processRail, .classBranches, .strategyGrid, .traceGrid, .opsTimeline, .appointmentBoard { grid-template-columns: 1fr; }
   .statusRail, .statusRail.cancelled { grid-template-columns: 1fr; }
   .commandCenter h2 { font-size: 20px; }
+}
+
+@media (min-width: 981px) {
+  .workspace {
+    padding: 32px;
+  }
+  .mainPanel {
+    min-height: calc(100vh - 218px);
+  }
 }
