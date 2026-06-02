@@ -1,10 +1,7 @@
 target/
-dist/
 data/
+dist/
+.git/
 .vscode/
 *.log
 *.tmp
-*.class
-.DS_Store
-
-.vercel
