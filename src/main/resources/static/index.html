@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MotoFix System</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="mark">MF</div>
+        <div>
+          <strong>MotoFix</strong>
+          <span>Operacion de taller</span>
+        </div>
+      </div>
+      <nav class="nav" id="nav"></nav>
+      <div class="session">
+        <span id="sessionName">Sin sesion</span>
+        <button id="logoutBtn" class="ghost" type="button">Salir</button>
+      </div>
+    </aside>
+
+    <section class="workspace">
+      <header class="topbar">
+        <div>
+          <span class="eyebrow">MotoFix System</span>
+          <h1 id="viewTitle">Acceso</h1>
+          <p id="viewSubtitle">Gestion de usuarios, motos, ordenes, servicios, inventario, pagos y reportes.</p>
+        </div>
+        <div class="topActions">
+          <label class="searchBox">
+            <span>Buscar</span>
+            <input id="searchInput" type="search" placeholder="Filtrar esta vista">
+          </label>
+          <button id="refreshBtn" class="iconButton" type="button" title="Actualizar">Actualizar</button>
+        </div>
+      </header>
+
+      <section id="loginView" class="loginPanel">
+        <div class="loginMedia" aria-hidden="true">
+          <img src="/assets/workshop-login.png" alt="">
+          <div class="loginOverlay">
+            <strong>Recepcion, diagnostico y cierre</strong>
+            <span>Una sola vista para seguir el trabajo desde la entrada de la moto hasta el pago.</span>
+          </div>
+        </div>
+        <form id="loginForm" class="formPanel loginCard">
+          <span class="eyebrow">Acceso operativo</span>
+          <h2>Entrar al sistema</h2>
+          <label>Email <input name="email" type="email" value="admin@motofix.com" required></label>
+          <label>Clave <input name="password" type="password" value="Admin12345" required></label>
+          <button type="submit">Entrar</button>
+          <div class="loginMeta">
+            <span>Admin demo</span>
+            <strong>admin@motofix.com</strong>
+          </div>
+        </form>
+      </section>
+
+      <section id="appView" class="hidden">
+        <div class="metrics" id="metrics"></div>
+        <section class="contentGrid">
+          <div class="mainPanel">
+            <div class="panelHead">
+              <h2 id="panelTitle">Dashboard</h2>
+              <span id="statusText">Listo</span>
+            </div>
+            <div id="dataView"></div>
+          </div>
+          <aside class="sidePanel" id="actionPanel"></aside>
+        </section>
+      </section>
+    </section>
+  </main>
+  <div id="toast" class="toast hidden"></div>
+  <script src="/app.js"></script>
+</body>
+</html>

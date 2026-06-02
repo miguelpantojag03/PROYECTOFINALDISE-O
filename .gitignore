@@ -1,0 +1,7 @@
+target/
+data/
+.vscode/
+*.log
+*.tmp
+*.class
+.DS_Store
