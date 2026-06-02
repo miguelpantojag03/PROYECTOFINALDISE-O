@@ -10,6 +10,7 @@ import com.motofix.mapper.PaymentMapper;
 import com.motofix.model.PaymentStatus;
 import com.motofix.repository.PaymentRepository;
 import com.motofix.repository.ServiceOrderRepository;
+import com.motofix.service.AuditLogService;
 import com.motofix.service.PaymentGatewayService;
 import com.motofix.service.PaymentService;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final ServiceOrderRepository serviceOrderRepository;
     private final PaymentMapper paymentMapper;
     private final PaymentGatewayService paymentGatewayService;
+    private final AuditLogService auditLogService;
 
     @Override
     public PaymentResponse register(PaymentRequest request) {
@@ -48,7 +50,9 @@ public class PaymentServiceImpl implements PaymentService {
         if (!paymentGatewayService.processPayment(payment.getAmount(), request.type())) {
             throw new BusinessException("Payment gateway rejected the transaction");
         }
-        return paymentMapper.toResponse(paymentRepository.save(payment));
+        Payment saved = paymentRepository.save(payment);
+        auditLogService.record("PAYMENT_REGISTERED", "Payment #" + saved.getId() + " registered for order #" + request.orderId());
+        return paymentMapper.toResponse(saved);
     }
 
     @Override
@@ -64,6 +68,7 @@ public class PaymentServiceImpl implements PaymentService {
         Payment payment = paymentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Payment not found"));
         payment.processPayment();
+        auditLogService.record("PAYMENT_CONFIRMED", "Payment #" + id + " confirmed");
         return paymentMapper.toResponse(payment);
     }
 

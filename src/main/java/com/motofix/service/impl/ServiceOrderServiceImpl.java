@@ -8,6 +8,7 @@ import com.motofix.exception.ResourceNotFoundException;
 import com.motofix.mapper.ServiceOrderMapper;
 import com.motofix.model.OrderStatus;
 import com.motofix.repository.*;
+import com.motofix.service.AuditLogService;
 import com.motofix.service.ServiceOrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,7 @@ public class ServiceOrderServiceImpl implements ServiceOrderService {
     private final SparePartRepository sparePartRepository;
     private final InventoryRepository inventoryRepository;
     private final ServiceOrderMapper serviceOrderMapper;
+    private final AuditLogService auditLogService;
 
     @Override
     public ServiceOrderResponse create(ServiceOrderRequest request) {
@@ -43,7 +45,9 @@ public class ServiceOrderServiceImpl implements ServiceOrderService {
                 .status(OrderStatus.PENDING)
                 .createdAt(LocalDateTime.now())
                 .build();
-        return serviceOrderMapper.toResponse(serviceOrderRepository.save(order));
+        ServiceOrder saved = serviceOrderRepository.save(order);
+        auditLogService.record("ORDER_CREATED", "Order #" + saved.getId() + " created for customer #" + customer.getId());
+        return serviceOrderMapper.toResponse(saved);
     }
 
     @Override
@@ -80,6 +84,7 @@ public class ServiceOrderServiceImpl implements ServiceOrderService {
         if (status == OrderStatus.FINISHED) {
             order.setFinishedAt(LocalDateTime.now());
         }
+        auditLogService.record("ORDER_STATUS_CHANGED", "Order #" + id + " changed to " + status);
         return serviceOrderMapper.toResponse(order);
     }
 
@@ -91,6 +96,7 @@ public class ServiceOrderServiceImpl implements ServiceOrderService {
                 .orElseThrow(() -> new ResourceNotFoundException("Mechanic not found"));
         order.setMechanic(mechanic);
         order.setStatus(OrderStatus.DIAGNOSIS);
+        auditLogService.record("ORDER_MECHANIC_ASSIGNED", "Order #" + id + " assigned to mechanic #" + mechanicId);
         return serviceOrderMapper.toResponse(order);
     }
 
@@ -104,6 +110,7 @@ public class ServiceOrderServiceImpl implements ServiceOrderService {
             order.setDiagnostic(diagnostic);
         }
         order.setStatus(OrderStatus.DIAGNOSIS);
+        auditLogService.record("ORDER_DIAGNOSTIC_REGISTERED", "Diagnostic registered for order #" + id);
         return serviceOrderMapper.toResponse(order);
     }
 
@@ -117,6 +124,7 @@ public class ServiceOrderServiceImpl implements ServiceOrderService {
             throw new BusinessException("Service is already attached to this order");
         }
         order.getServices().add(service);
+        auditLogService.record("ORDER_SERVICE_ADDED", "Service #" + serviceId + " added to order #" + id);
         return serviceOrderMapper.toResponse(order);
     }
 
@@ -137,6 +145,7 @@ public class ServiceOrderServiceImpl implements ServiceOrderService {
         inventory.setStock(inventory.getStock() - 1);
         sparePart.decreaseStock(1);
         order.getSpareParts().add(sparePart);
+        auditLogService.record("ORDER_PART_ADDED", "Spare part #" + sparePartId + " added to order #" + id);
         return serviceOrderMapper.toResponse(order);
     }
 
@@ -158,6 +167,7 @@ public class ServiceOrderServiceImpl implements ServiceOrderService {
             throw new BusinessException("Finished orders cannot be cancelled");
         }
         order.setStatus(OrderStatus.CANCELLED);
+        auditLogService.record("ORDER_CANCELLED", "Order #" + id + " cancelled");
         return serviceOrderMapper.toResponse(order);
     }
 

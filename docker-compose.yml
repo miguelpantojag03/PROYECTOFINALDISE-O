@@ -1,0 +1,39 @@
+services:
+  app:
+    build: .
+    container_name: motofix-app
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker,redis
+      DB_URL: jdbc:postgresql://postgres:5432/motofix
+      DB_USERNAME: motofix
+      DB_PASSWORD: motofix
+      DB_DRIVER: org.postgresql.Driver
+      JWT_SECRET: ChangeThisSecretKeyForMotoFixSystemWithAtLeast32Characters
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+    depends_on:
+      - postgres
+      - redis
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: motofix-postgres
+    environment:
+      POSTGRES_DB: motofix
+      POSTGRES_USER: motofix
+      POSTGRES_PASSWORD: motofix
+    ports:
+      - "5432:5432"
+    volumes:
+      - motofix_postgres:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: motofix-redis
+    ports:
+      - "6379:6379"
+
+volumes:
+  motofix_postgres:

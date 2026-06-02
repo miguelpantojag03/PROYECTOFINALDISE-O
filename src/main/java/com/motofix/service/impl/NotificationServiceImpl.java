@@ -10,6 +10,7 @@ import com.motofix.mapper.NotificationMapper;
 import com.motofix.model.NotificationChannel;
 import com.motofix.repository.NotificationRepository;
 import com.motofix.repository.UserRepository;
+import com.motofix.service.AuditLogService;
 import com.motofix.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ public class NotificationServiceImpl implements NotificationService {
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
     private final NotificationMapper notificationMapper;
+    private final AuditLogService auditLogService;
 
     @Override
     public NotificationResponse send(NotificationRequest request) {
@@ -37,7 +39,9 @@ public class NotificationServiceImpl implements NotificationService {
         notification.setChannel(request.channel());
         notification.setReadFlag(false);
         notification.setSentAt(LocalDateTime.now());
-        return notificationMapper.toResponse(notificationRepository.save(notification));
+        Notification saved = notificationRepository.save(notification);
+        auditLogService.record("NOTIFICATION_SENT", request.channel() + " notification sent to user #" + user.getId());
+        return notificationMapper.toResponse(saved);
     }
 
     @Override
@@ -51,6 +55,7 @@ public class NotificationServiceImpl implements NotificationService {
         Notification notification = notificationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification not found"));
         notification.setReadFlag(true);
+        auditLogService.record("NOTIFICATION_READ", "Notification #" + id + " marked as read");
         return notificationMapper.toResponse(notification);
     }
 

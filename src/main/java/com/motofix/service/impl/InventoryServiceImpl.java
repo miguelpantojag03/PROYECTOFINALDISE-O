@@ -9,6 +9,7 @@ import com.motofix.exception.ResourceNotFoundException;
 import com.motofix.mapper.SparePartMapper;
 import com.motofix.repository.InventoryRepository;
 import com.motofix.repository.SparePartRepository;
+import com.motofix.service.AuditLogService;
 import com.motofix.service.InventoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ public class InventoryServiceImpl implements InventoryService {
     private final SparePartRepository sparePartRepository;
     private final InventoryRepository inventoryRepository;
     private final SparePartMapper sparePartMapper;
+    private final AuditLogService auditLogService;
 
     @Override
     public SparePartResponse registerSparePart(SparePartRequest request) {
@@ -38,6 +40,7 @@ public class InventoryServiceImpl implements InventoryService {
         inventoryRecord.setSparePart(saved);
         inventoryRecord.setStock(request.initialStock());
         Inventory inventory = inventoryRepository.save(inventoryRecord);
+        auditLogService.record("SPARE_PART_CREATED", "Spare part #" + saved.getId() + " registered with stock " + request.initialStock());
         return sparePartMapper.toResponse(saved, inventory);
     }
 
@@ -61,6 +64,7 @@ public class InventoryServiceImpl implements InventoryService {
         Inventory inventory = getInventory(sparePartId);
         inventory.setStock(inventory.getStock() + quantity);
         inventory.getSparePart().increaseStock(quantity);
+        auditLogService.record("STOCK_INCREASED", "Spare part #" + sparePartId + " increased by " + quantity);
         return sparePartMapper.toResponse(inventory.getSparePart(), inventory);
     }
 
@@ -73,6 +77,7 @@ public class InventoryServiceImpl implements InventoryService {
         }
         inventory.setStock(inventory.getStock() - quantity);
         inventory.getSparePart().decreaseStock(quantity);
+        auditLogService.record("STOCK_DECREASED", "Spare part #" + sparePartId + " decreased by " + quantity);
         return sparePartMapper.toResponse(inventory.getSparePart(), inventory);
     }
 
@@ -86,6 +91,7 @@ public class InventoryServiceImpl implements InventoryService {
         sparePart.setStock(request.initialStock());
         Inventory inventory = getInventory(sparePartId);
         inventory.setStock(request.initialStock());
+        auditLogService.record("SPARE_PART_UPDATED", "Spare part #" + sparePartId + " updated");
         return sparePartMapper.toResponse(sparePart, inventory);
     }
 
@@ -94,6 +100,7 @@ public class InventoryServiceImpl implements InventoryService {
         Inventory inventory = getInventory(sparePartId);
         inventoryRepository.delete(inventory);
         sparePartRepository.delete(getSparePart(sparePartId));
+        auditLogService.record("SPARE_PART_DELETED", "Spare part #" + sparePartId + " deleted");
     }
 
     private SparePart getSparePart(Long id) {

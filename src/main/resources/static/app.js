@@ -4,7 +4,7 @@ const state = {
   view: "dashboard",
   query: "",
   filters: {},
-  cache: { users: [], motorcycles: [], orders: [], services: [], parts: [], payments: [], reports: {} }
+  cache: { users: [], motorcycles: [], orders: [], services: [], parts: [], payments: [], auditLogs: [], reports: {} }
 };
 
 const views = [
@@ -16,6 +16,7 @@ const views = [
   ["inventory", "IN", "Inventario"],
   ["payments", "PG", "Pagos"],
   ["notifications", "NT", "Notificaciones"],
+  ["audit", "AU", "Auditoria"],
   ["architecture", "AR", "Arquitectura"],
   ["reports", "RP", "Reportes"]
 ];
@@ -61,6 +62,7 @@ function viewCount(id) {
     inventory: c.parts.length,
     payments: c.payments.length,
     notifications: "",
+    audit: c.auditLogs.length,
     architecture: "",
     reports: ""
   }[id] ?? "";
@@ -124,15 +126,16 @@ async function bootstrap() {
 
 async function loadAll() {
   setStatus("Cargando...");
-  const [users, motorcycles, orders, services, parts, payments] = await Promise.all([
+  const [users, motorcycles, orders, services, parts, payments, auditLogs] = await Promise.all([
     api("/api/users"),
     api("/api/motorcycles"),
     api("/api/service-orders"),
     api("/api/maintenance-services"),
     api("/api/spare-parts"),
-    api("/api/payments")
+    api("/api/payments"),
+    api("/api/audit-logs")
   ]);
-  state.cache = { ...state.cache, users, motorcycles, orders, services, parts, payments };
+  state.cache = { ...state.cache, users, motorcycles, orders, services, parts, payments, auditLogs };
   setStatus("Actualizado");
 }
 
@@ -285,13 +288,14 @@ function render() {
     inventory: "Repuestos, stock interno y consulta de proveedor.",
     payments: "Registro y confirmacion de pagos por orden.",
     notifications: "Envio y consulta de comunicaciones por usuario.",
+    audit: "Historial de acciones criticas del sistema.",
     architecture: "Vista fiel a la idea de los diagramas: capas, herencia, estrategias y flujo operativo.",
     reports: "Agregados de ordenes, pagos, inventario y servicios."
   };
   $("viewTitle").textContent = label;
   $("panelTitle").textContent = label;
   $("viewSubtitle").textContent = subtitles[state.view] || "Interfaz operativa alineada con los modulos del backend MotoFix.";
-  const renderers = { dashboard, users, motorcycles, orders, services, inventory, payments, notifications, architecture, reports };
+  const renderers = { dashboard, users, motorcycles, orders, services, inventory, payments, notifications, audit, architecture, reports };
   renderers[state.view]();
 }
 
@@ -672,6 +676,41 @@ function notifications() {
     bindNotificationActions();
   });
   $("sideForm").appendChild(lookup);
+}
+
+function audit() {
+  const rows = [...state.cache.auditLogs];
+  const columns = [
+    ["ID", log => log.id],
+    ["Accion", log => statusPill(log.action)],
+    ["Detalle", log => log.detail || ""],
+    ["Fecha", log => log.createdAt || ""]
+  ];
+  const orderEvents = rows.filter(log => String(log.action || "").startsWith("ORDER")).length;
+  const paymentEvents = rows.filter(log => String(log.action || "").startsWith("PAYMENT")).length;
+  const stockEvents = rows.filter(log => String(log.action || "").includes("STOCK") || String(log.action || "").includes("SPARE_PART")).length;
+  $("dataView").innerHTML = `
+    ${viewToolbar([`${rows.length} eventos`, `${orderEvents} ordenes`, `${paymentEvents} pagos`, `${stockEvents} inventario`])}
+    <div class="toolbar"><div class="toolbarGroup"><span class="chip">Ultimos 100 eventos</span><span class="chip">Fuente: tabla logs</span></div><button class="iconButton" id="exportAudit">Exportar CSV</button></div>
+    ${table(columns, rows)}`;
+  $("exportAudit").addEventListener("click", () => exportCsv("auditoria-motofix", columns, rows));
+  $("actionPanel").innerHTML = `
+    <h2>Control de cumplimiento</h2>
+    <p>Esta seccion cubre la tabla de logs indicada en los diagramas de despliegue y desarrollo.</p>
+    <hr>
+    <div class="ruleList">
+      <div><b>Ordenes</b><span>Creacion, asignacion, diagnostico, servicios, repuestos y estados.</span></div>
+      <div><b>Pagos</b><span>Registro y confirmacion de pagos.</span></div>
+      <div><b>Inventario</b><span>Creacion, edicion, eliminacion y movimientos de stock.</span></div>
+      <div><b>Notificaciones</b><span>Envio y lectura por canal.</span></div>
+    </div>
+    <hr>
+    <button type="button" id="refreshAudit">Actualizar auditoria</button>`;
+  $("refreshAudit").addEventListener("click", async () => {
+    state.cache.auditLogs = await api("/api/audit-logs");
+    render();
+    toast("Auditoria actualizada");
+  });
 }
 
 async function reports() {

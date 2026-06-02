@@ -43,7 +43,7 @@ customer@motofix.com / Customer12345
 mechanic@motofix.com / Mechanic12345
 ```
 
-La interfaz incluye dashboard, usuarios, motocicletas, ordenes, servicios, inventario, pagos, notificaciones, arquitectura y reportes. La vista `Arquitectura` resume visualmente la idea de los diagramas del sistema: capas Spring, herencia de usuarios, herencia de servicios, estrategias de pago/notificacion, flujo cliente-moto-orden-servicio-pago-notificacion y trazabilidad con datos reales.
+La interfaz incluye dashboard, usuarios, motocicletas, ordenes, servicios, inventario, pagos, notificaciones, auditoria, arquitectura y reportes. La vista `Arquitectura` resume visualmente la idea de los diagramas del sistema: capas Spring, herencia de usuarios, herencia de servicios, estrategias de pago/notificacion, flujo cliente-moto-orden-servicio-pago-notificacion y trazabilidad con datos reales. La vista `Auditoria` muestra los logs persistidos de acciones criticas.
 
 ## Configuracion
 
@@ -79,6 +79,25 @@ DB_USERNAME=root
 DB_PASSWORD=tu_password
 DB_DRIVER=com.mysql.cj.jdbc.Driver
 ```
+
+## Despliegue con Docker
+
+El repositorio incluye `Dockerfile` y `docker-compose.yml` para acercar el proyecto a la vista de despliegue del documento:
+
+- Backend Java 17 + Spring Boot.
+- PostgreSQL como base de datos persistente.
+- Redis como servicio de cache usando el perfil `redis`.
+- API REST y frontend web publicados en `http://localhost:8080/`.
+
+Ejecuta:
+
+```bash
+docker compose up --build
+```
+
+Credenciales y datos semilla se crean al iniciar la aplicacion.
+
+En modo local sin Docker el sistema sigue usando H2 e implementacion de cache en memoria.
 
 ## Datos de prueba
 

@@ -1,6 +1,7 @@
 package com.motofix.service.impl;
 
 import com.motofix.service.CacheService;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -8,6 +9,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
+@Profile("!redis")
 public class InMemoryCacheServiceImpl implements CacheService {
     private final Map<String, String> cache = new ConcurrentHashMap<>();
 
