@@ -25,7 +25,7 @@ const views = [
 const $ = (id) => document.getElementById(id);
 const API_BASE = (window.MOTOFIX_API_BASE_URL || "").replace(/\/$/, "");
 const LOCAL_HOSTS = ["localhost", "127.0.0.1", ""];
-const DEMO_MODE = !API_BASE && !LOCAL_HOSTS.includes(window.location.hostname);
+const DEMO_MODE = !API_BASE && (window.location.protocol === "file:" || !LOCAL_HOSTS.includes(window.location.hostname));
 const money = (v) => Number(v || 0).toLocaleString("es-CO", { style: "currency", currency: "COP" });
 
 const demoDb = createDemoDb();

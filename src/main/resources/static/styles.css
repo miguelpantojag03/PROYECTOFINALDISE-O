@@ -869,7 +869,7 @@ hr {
   border-radius: 10px;
   background:
     linear-gradient(135deg, rgba(6, 48, 43, .92), rgba(12, 93, 84, .86)),
-    url("/assets/workshop-login.png") center / cover;
+    url("./assets/workshop-login.png") center / cover;
   box-shadow: 0 22px 60px rgba(6, 48, 43, .24);
   color: white;
   overflow: hidden;
