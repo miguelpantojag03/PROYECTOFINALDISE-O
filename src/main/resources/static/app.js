@@ -4,13 +4,14 @@ const state = {
   view: "dashboard",
   query: "",
   filters: {},
-  cache: { users: [], motorcycles: [], orders: [], services: [], parts: [], payments: [], auditLogs: [], reports: {} }
+  cache: { users: [], motorcycles: [], appointments: [], orders: [], services: [], parts: [], payments: [], auditLogs: [], reports: {} }
 };
 
 const views = [
   ["dashboard", "DB", "Dashboard"],
   ["users", "US", "Usuarios"],
   ["motorcycles", "MT", "Motocicletas"],
+  ["appointments", "AG", "Agenda"],
   ["orders", "OR", "Ordenes"],
   ["services", "SV", "Servicios"],
   ["inventory", "IN", "Inventario"],
@@ -57,6 +58,7 @@ function viewCount(id) {
     dashboard: c.orders.filter(o => !["FINISHED", "CANCELLED"].includes(o.status)).length,
     users: c.users.length,
     motorcycles: c.motorcycles.length,
+    appointments: c.appointments.filter(a => !["COMPLETED", "CANCELLED"].includes(a.status)).length,
     orders: c.orders.length,
     services: c.services.length,
     inventory: c.parts.length,
@@ -126,26 +128,28 @@ async function bootstrap() {
 
 async function loadAll() {
   setStatus("Cargando...");
-  const [users, motorcycles, orders, services, parts, payments, auditLogs] = await Promise.all([
+  const [users, motorcycles, appointments, orders, services, parts, payments, auditLogs] = await Promise.all([
     api("/api/users"),
     api("/api/motorcycles"),
+    api("/api/appointments"),
     api("/api/service-orders"),
     api("/api/maintenance-services"),
     api("/api/spare-parts"),
     api("/api/payments"),
     api("/api/audit-logs")
   ]);
-  state.cache = { ...state.cache, users, motorcycles, orders, services, parts, payments, auditLogs };
+  state.cache = { ...state.cache, users, motorcycles, appointments, orders, services, parts, payments, auditLogs };
   setStatus("Actualizado");
 }
 
 function renderMetrics() {
   const c = state.cache;
   const open = c.orders.filter(o => !["FINISHED", "CANCELLED"].includes(o.status)).length;
+  const scheduled = c.appointments.filter(a => a.status === "SCHEDULED").length;
   const pendingPayments = c.payments.filter(p => p.status !== "CONFIRMED").length;
   $("metrics").innerHTML = [
     ["OR", "Ordenes abiertas", open, "En proceso", "#08766f"],
-    ["CL", "Clientes", c.users.filter(u => u.role === "ROLE_CUSTOMER").length, "Registrados", "#2563eb"],
+    ["AG", "Citas programadas", scheduled, "Proximas visitas", "#2563eb"],
     ["MT", "Motos", c.motorcycles.length, "En historial", "#b45309"],
     ["ST", "Stock total", c.parts.reduce((sum, p) => sum + Number(p.stock || 0), 0), `${pendingPayments} pagos pendientes`, "#15803d"]
   ].map(([icon, label, value, note, color]) => `<div class="metric" style="--metric-color:${color}"><i>${icon}</i><div><strong>${value}</strong><span>${label}</span><small>${note}</small></div></div>`).join("");
@@ -154,9 +158,9 @@ function renderMetrics() {
 function statusPill(value) {
   const status = String(value || "");
   let tone = "";
-  if (["PENDING", "DIAGNOSIS", "IN_PROGRESS", "WAITING_FOR_PARTS"].includes(status)) tone = "pending";
-  if (["CONFIRMED", "AVAILABLE"].includes(status)) tone = "active";
-  if (["FINISHED"].includes(status)) tone = "done";
+  if (["PENDING", "DIAGNOSIS", "IN_PROGRESS", "WAITING_FOR_PARTS", "SCHEDULED"].includes(status)) tone = "pending";
+  if (["CONFIRMED", "AVAILABLE", "CHECKED_IN"].includes(status)) tone = "active";
+  if (["FINISHED", "COMPLETED"].includes(status)) tone = "done";
   if (["CANCELLED", "REJECTED"].includes(status)) tone = "cancelled";
   return `<span class="pill ${tone}">${status}</span>`;
 }
@@ -206,6 +210,18 @@ function filterRows(rows) {
 
 function entity(primary, secondary) {
   return `<div class="entityTitle"><strong>${primary || "-"}</strong><span>${secondary || ""}</span></div>`;
+}
+
+function formatDateTime(value) {
+  if (!value) return "-";
+  return new Date(value).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" });
+}
+
+function nextAppointmentSlot() {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  date.setHours(9, 0, 0, 0);
+  return date.toISOString().slice(0, 16);
 }
 
 function optionList(rows, labelFn, empty = "Sin datos") {
@@ -294,6 +310,7 @@ function render() {
     dashboard: "Resumen operativo del taller y ordenes recientes.",
     users: "Clientes, mecanicos y administradores del sistema.",
     motorcycles: "Historial de motocicletas asociadas a clientes.",
+    appointments: "Agenda realista para programar recepcion de motos.",
     orders: "Recepcion, diagnostico, asignacion, servicios y cierre de ordenes.",
     services: "Catalogo polimorfico de servicios de mantenimiento.",
     inventory: "Repuestos, stock interno y consulta de proveedor.",
@@ -306,7 +323,7 @@ function render() {
   $("viewTitle").textContent = label;
   $("panelTitle").textContent = label;
   $("viewSubtitle").textContent = subtitles[state.view] || "Interfaz operativa alineada con los modulos del backend MotoFix.";
-  const renderers = { dashboard, users, motorcycles, orders, services, inventory, payments, notifications, audit, architecture, reports };
+  const renderers = { dashboard, users, motorcycles, appointments, orders, services, inventory, payments, notifications, audit, architecture, reports };
   renderers[state.view]();
 }
 
@@ -317,6 +334,7 @@ function dashboard() {
   const revenue = state.cache.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
   const lowParts = state.cache.parts.filter(p => Number(p.stock || 0) <= 3).slice(0, 4);
   const waitingOrders = state.cache.orders.filter(o => !["FINISHED", "CANCELLED"].includes(o.status)).slice(0, 4);
+  const nextAppointments = [...state.cache.appointments].filter(a => ["SCHEDULED", "CHECKED_IN"].includes(a.status)).slice(0, 4);
   const finishedOrders = state.cache.orders.filter(o => o.status === "FINISHED").length;
   const completion = state.cache.orders.length ? Math.round((finishedOrders / state.cache.orders.length) * 100) : 0;
   $("dataView").innerHTML = `
@@ -327,6 +345,7 @@ function dashboard() {
         <p>Recepcion, diagnostico, repuestos, pagos y cierre conectados en una sola operacion.</p>
         <div class="quickActions">
           <button type="button" data-jump-view="orders">Nueva orden</button>
+          <button type="button" data-jump-view="appointments">Agendar cita</button>
           <button type="button" data-jump-view="motorcycles">Registrar moto</button>
           <button type="button" data-jump-view="inventory">Mover stock</button>
           <button type="button" data-jump-view="payments">Registrar pago</button>
@@ -343,7 +362,7 @@ function dashboard() {
       <div class="dashCard"><strong>${money(revenue)}</strong><span>Pagos registrados</span></div>
     </div>
     <div class="opsTimeline">
-      ${["Recepcion", "Diagnostico", "Servicio", "Inventario", "Pago", "Entrega"].map((step, index) => `<span><b>${index + 1}</b>${step}</span>`).join("")}
+      ${["Agenda", "Recepcion", "Diagnostico", "Servicio", "Pago", "Entrega"].map((step, index) => `<span><b>${index + 1}</b>${step}</span>`).join("")}
     </div>
     ${table([
     ["ID", o => o.id],
@@ -360,6 +379,9 @@ function dashboard() {
     </div>
     <h2>Proceso principal</h2>
     <div class="flow"><span>Registrar cliente</span><span>Crear moto</span><span>Abrir orden</span><span>Asignar tecnico</span><span>Agregar servicio</span><span>Confirmar pago</span></div>
+    <hr>
+    <h2>Proximas citas</h2>
+    <div class="miniList">${nextAppointments.length ? nextAppointments.map(a => `<div class="miniItem"><strong>${a.customerName || ""}</strong><span>${formatDateTime(a.scheduledAt)}</span></div>`).join("") : `<div class="empty">Sin citas pendientes.</div>`}</div>
     <hr>
     <h2>Ordenes activas</h2>
     <div class="miniList">${waitingOrders.length ? waitingOrders.map(o => `<div class="miniItem"><strong>#${o.id} ${o.customerName || ""}</strong>${statusPill(o.status)}</div>`).join("") : `<div class="empty">Sin ordenes activas.</div>`}</div>
@@ -484,6 +506,60 @@ function motorcycles() {
     await refresh("Kilometraje actualizado");
   });
   bindMotorcycleActions();
+}
+
+function appointments() {
+  const rows = filteredBy(state.cache.appointments, (appointment, filter) => appointment.status === filter);
+  const upcoming = state.cache.appointments.filter(a => ["SCHEDULED", "CHECKED_IN"].includes(a.status)).length;
+  const today = new Date().toISOString().slice(0, 10);
+  const todayCount = state.cache.appointments.filter(a => String(a.scheduledAt || "").startsWith(today)).length;
+  const columns = [
+    ["ID", a => a.id],
+    ["Fecha", a => entity(formatDateTime(a.scheduledAt), a.reason || "Servicio de taller")],
+    ["Cliente", a => entity(a.customerName, `#${a.customerId}`)],
+    ["Moto", a => entity(a.motorcycle, `Moto #${a.motorcycleId}`)],
+    ["Estado", a => statusPill(a.status)],
+    ["Notas", a => a.notes || ""],
+    ["Acciones", a => `<div class="actions">
+      <button data-appointment-status="CHECKED_IN" data-id="${a.id}">Recibir</button>
+      <button data-appointment-status="COMPLETED" data-id="${a.id}">Completar</button>
+      <button class="secondary" data-appointment-status="CANCELLED" data-id="${a.id}">Cancelar</button>
+      <button class="danger" data-appointment-delete="${a.id}">Eliminar</button>
+    </div>`]
+  ];
+  $("dataView").innerHTML = `
+    ${viewToolbar([`${upcoming} pendientes`, `${todayCount} para hoy`, `${state.cache.appointments.length} citas`])}
+    <div class="appointmentBoard">
+      ${["SCHEDULED", "CHECKED_IN", "COMPLETED", "CANCELLED"].map(status => `<div><strong>${state.cache.appointments.filter(a => a.status === status).length}</strong><span>${status}</span></div>`).join("")}
+    </div>
+    <div class="toolbar">${filterButtons("appointmentStatus", [["ALL", "Todas"], ["SCHEDULED", "Programadas"], ["CHECKED_IN", "Recibidas"], ["COMPLETED", "Completadas"], ["CANCELLED", "Canceladas"]])}<button class="iconButton" id="exportAppointments">Exportar CSV</button></div>
+    ${table(columns, rows)}`;
+  bindFilterButtons();
+  $("exportAppointments").addEventListener("click", () => exportCsv("agenda-motofix", columns, rows));
+  $("actionPanel").innerHTML = `
+    <form id="appointmentForm" class="formGrid">
+      <h2>Nueva cita</h2>
+      ${formSelect("customerId", "Cliente", optionList(state.cache.users.filter(u => u.role === "ROLE_CUSTOMER"), u => `${u.name} - #${u.id}`))}
+      ${formSelect("motorcycleId", "Motocicleta", optionList(state.cache.motorcycles, m => `${m.brand} ${m.model} ${m.plate || ""} - #${m.id}`))}
+      ${input("scheduledAt", "Fecha y hora", "datetime-local", nextAppointmentSlot(), "required")}
+      ${input("reason", "Motivo", "text", "Revision de taller")}
+      ${area("notes", "Notas de recepcion")}
+      <button type="submit">Agendar cita</button>
+    </form>
+    <hr>
+    <h2>Operacion realista</h2>
+    <div class="ruleList">
+      <div><b>Antes de la orden</b><span>La cita organiza llegada, cliente y moto.</span></div>
+      <div><b>Recepcion</b><span>Al recibir la moto puedes crear una orden desde el modulo Ordenes.</span></div>
+      <div><b>Auditoria</b><span>Crear, cambiar estado o eliminar cita queda en logs.</span></div>
+    </div>`;
+  $("appointmentForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const data = toPayload(event.currentTarget);
+    await api("/api/appointments", { method: "POST", body: JSON.stringify(data) });
+    await refresh("Cita agendada");
+  });
+  bindAppointmentActions();
 }
 
 function orders() {
@@ -802,7 +878,7 @@ function architecture() {
           <span>Secuencia principal</span>
         </div>
         <div class="processRail">
-          ${["Login JWT", "Usuario", "Moto", "Orden", "Diagnostico", "Servicio", "Repuesto", "Pago", "Notificacion", "Reporte"].map((label, index) =>
+          ${["Login JWT", "Usuario", "Moto", "Agenda", "Orden", "Diagnostico", "Servicio", "Repuesto", "Pago", "Notificacion", "Reporte"].map((label, index) =>
             `<div class="processStep"><b>${String(index + 1).padStart(2, "0")}</b><span>${label}</span></div>`
           ).join("")}
         </div>
@@ -880,6 +956,7 @@ function architecture() {
         <div class="traceGrid">
           <div><strong>${c.users.filter(u => u.role === "ROLE_CUSTOMER").length}</strong><span>Clientes</span></div>
           <div><strong>${c.motorcycles.length}</strong><span>Motos vinculadas</span></div>
+          <div><strong>${c.appointments.length}</strong><span>Citas agenda</span></div>
           <div><strong>${c.orders.length}</strong><span>Ordenes creadas</span></div>
           <div><strong>${c.services.length}</strong><span>Servicios catalogo</span></div>
           <div><strong>${c.parts.length}</strong><span>Repuestos</span></div>
@@ -1049,6 +1126,18 @@ function bindMotorcycleActions() {
     if (!confirm("Eliminar esta motocicleta?")) return;
     await api(`/api/motorcycles/${button.dataset.motoDelete}`, { method: "DELETE" });
     await refresh("Motocicleta eliminada");
+  }));
+}
+
+function bindAppointmentActions() {
+  document.querySelectorAll("[data-appointment-status]").forEach(button => button.addEventListener("click", async () => {
+    await api(`/api/appointments/${button.dataset.id}/status?status=${button.dataset.appointmentStatus}`, { method: "PATCH" });
+    await refresh("Cita actualizada");
+  }));
+  document.querySelectorAll("[data-appointment-delete]").forEach(button => button.addEventListener("click", async () => {
+    if (!confirm("Eliminar esta cita?")) return;
+    await api(`/api/appointments/${button.dataset.appointmentDelete}`, { method: "DELETE" });
+    await refresh("Cita eliminada");
   }));
 }
 

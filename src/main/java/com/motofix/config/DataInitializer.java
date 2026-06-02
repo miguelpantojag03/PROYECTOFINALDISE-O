@@ -1,6 +1,7 @@
 package com.motofix.config;
 
 import com.motofix.entity.*;
+import com.motofix.model.AppointmentStatus;
 import com.motofix.model.RoleName;
 import com.motofix.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -10,6 +11,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Configuration
 @RequiredArgsConstructor
@@ -22,6 +24,7 @@ public class DataInitializer {
     private final ServiceMaintenanceRepository serviceMaintenanceRepository;
     private final SparePartRepository sparePartRepository;
     private final InventoryRepository inventoryRepository;
+    private final AppointmentRepository appointmentRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Bean
@@ -111,6 +114,20 @@ public class DataInitializer {
                 inventory.setSparePart(filter);
                 inventory.setStock(20);
                 inventoryRepository.save(inventory);
+            }
+
+            if (appointmentRepository.count() == 0) {
+                Customer customer = customerRepository.findAll().stream().findFirst().orElseThrow();
+                Motorcycle motorcycle = motorcycleRepository.findAll().stream().findFirst().orElseThrow();
+                Appointment appointment = new Appointment();
+                appointment.setCustomer(customer);
+                appointment.setMotorcycle(motorcycle);
+                appointment.setScheduledAt(LocalDateTime.now().plusDays(1).withHour(9).withMinute(0).withSecond(0).withNano(0));
+                appointment.setStatus(AppointmentStatus.SCHEDULED);
+                appointment.setReason("Revision preventiva");
+                appointment.setNotes("Verificar frenos, aceite y estado general antes de viaje.");
+                appointment.setCreatedAt(LocalDateTime.now());
+                appointmentRepository.save(appointment);
             }
         };
     }

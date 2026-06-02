@@ -490,6 +490,34 @@ th {
   font-size: 11px;
   font-weight: 700;
 }
+.appointmentBoard {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.appointmentBoard div {
+  min-height: 92px;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #dfe8e5;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.94), rgba(245,250,248,.92)),
+    linear-gradient(135deg, rgba(0,107,98,.11), rgba(210,109,35,.08));
+  box-shadow: var(--shadow-soft);
+}
+.appointmentBoard strong {
+  display: block;
+  font-size: 32px;
+  line-height: 1;
+}
+.appointmentBoard span {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+}
 .detailCard {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -923,7 +951,7 @@ hr {
   .loginMedia { min-height: 340px; }
   .topbar, .topActions { align-items: stretch; flex-direction: column; }
   .searchBox { width: 100%; }
-  .kanban, .reportGrid, .architectureGrid, .opsTimeline { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kanban, .reportGrid, .architectureGrid, .opsTimeline, .appointmentBoard { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .processRail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .traceGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .statusRail, .statusRail.cancelled { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -938,7 +966,7 @@ hr {
   .formRow { grid-template-columns: 1fr; }
   .loginCard { padding: 20px; }
   .toolbar { align-items: flex-start; flex-direction: column; }
-  .kanban, .reportGrid, .barRow, .architectureGrid, .processRail, .classBranches, .strategyGrid, .traceGrid, .opsTimeline { grid-template-columns: 1fr; }
+  .kanban, .reportGrid, .barRow, .architectureGrid, .processRail, .classBranches, .strategyGrid, .traceGrid, .opsTimeline, .appointmentBoard { grid-template-columns: 1fr; }
   .statusRail, .statusRail.cancelled { grid-template-columns: 1fr; }
   .commandCenter h2 { font-size: 20px; }
 }
