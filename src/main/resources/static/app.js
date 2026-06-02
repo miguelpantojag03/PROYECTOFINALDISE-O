@@ -144,11 +144,11 @@ function renderMetrics() {
   const open = c.orders.filter(o => !["FINISHED", "CANCELLED"].includes(o.status)).length;
   const pendingPayments = c.payments.filter(p => p.status !== "CONFIRMED").length;
   $("metrics").innerHTML = [
-    ["Ordenes abiertas", open, "En proceso", "#08766f"],
-    ["Clientes", c.users.filter(u => u.role === "ROLE_CUSTOMER").length, "Registrados", "#2563eb"],
-    ["Motos", c.motorcycles.length, "En historial", "#b45309"],
-    ["Stock total", c.parts.reduce((sum, p) => sum + Number(p.stock || 0), 0), `${pendingPayments} pagos pendientes`, "#15803d"]
-  ].map(([label, value, note, color]) => `<div class="metric" style="--metric-color:${color}"><strong>${value}</strong><span>${label}</span><small>${note}</small></div>`).join("");
+    ["OR", "Ordenes abiertas", open, "En proceso", "#08766f"],
+    ["CL", "Clientes", c.users.filter(u => u.role === "ROLE_CUSTOMER").length, "Registrados", "#2563eb"],
+    ["MT", "Motos", c.motorcycles.length, "En historial", "#b45309"],
+    ["ST", "Stock total", c.parts.reduce((sum, p) => sum + Number(p.stock || 0), 0), `${pendingPayments} pagos pendientes`, "#15803d"]
+  ].map(([icon, label, value, note, color]) => `<div class="metric" style="--metric-color:${color}"><i>${icon}</i><div><strong>${value}</strong><span>${label}</span><small>${note}</small></div></div>`).join("");
 }
 
 function statusPill(value) {
@@ -306,11 +306,27 @@ function dashboard() {
   const revenue = state.cache.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
   const lowParts = state.cache.parts.filter(p => Number(p.stock || 0) <= 3).slice(0, 4);
   const waitingOrders = state.cache.orders.filter(o => !["FINISHED", "CANCELLED"].includes(o.status)).slice(0, 4);
+  const finishedOrders = state.cache.orders.filter(o => o.status === "FINISHED").length;
+  const completion = state.cache.orders.length ? Math.round((finishedOrders / state.cache.orders.length) * 100) : 0;
   $("dataView").innerHTML = `
+    <section class="commandCenter">
+      <div>
+        <span class="eyebrow">Centro de control</span>
+        <h2>${activeOrders} ordenes necesitan seguimiento</h2>
+        <p>Recepcion, diagnostico, repuestos, pagos y cierre conectados en una sola operacion.</p>
+      </div>
+      <div class="completionGauge" style="--completion:${completion}%">
+        <strong>${completion}%</strong>
+        <span>Cierre operativo</span>
+      </div>
+    </section>
     <div class="dashboardGrid">
       <div class="dashCard"><strong>${activeOrders}</strong><span>Ordenes que requieren seguimiento</span></div>
       <div class="dashCard"><strong>${lowStock}</strong><span>Repuestos con stock bajo</span></div>
       <div class="dashCard"><strong>${money(revenue)}</strong><span>Pagos registrados</span></div>
+    </div>
+    <div class="opsTimeline">
+      ${["Recepcion", "Diagnostico", "Servicio", "Inventario", "Pago", "Entrega"].map((step, index) => `<span><b>${index + 1}</b>${step}</span>`).join("")}
     </div>
     ${table([
     ["ID", o => o.id],
@@ -770,12 +786,18 @@ function architecture() {
       </section>
       <section class="diagramPanel">
         <div class="diagramHeader">
-          <h2>Capas Spring</h2>
-          <span>Controller -> DB</span>
+          <h2>5 capas del sistema</h2>
+          <span>Desarrollo + despliegue</span>
         </div>
         <div class="layerStack">
-          ${["Controller REST", "DTO + Mapper", "Service", "Repository JPA", "Entity / Model", "H2 persistente"].map((label, index) =>
-            `<div><strong>${label}</strong><small>Nivel ${index + 1}</small></div>`
+          ${[
+            ["Capa 1", "Presentacion", "HTML, CSS, JavaScript"],
+            ["Capa 2", "API REST", "controller, dto, exception, security"],
+            ["Capa 3", "Negocio", "service, service.impl, domain, mapper"],
+            ["Capa 4", "Datos", "repository, entity, model, util"],
+            ["Capa 5", "Infraestructura", "Docker, PostgreSQL, Redis, H2 local"]
+          ].map(([level, title, detail]) =>
+            `<div><strong>${level} - ${title}</strong><small>${detail}</small></div>`
           ).join("")}
         </div>
       </section>
