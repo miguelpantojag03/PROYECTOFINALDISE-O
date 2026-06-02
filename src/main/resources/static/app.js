@@ -24,7 +24,11 @@ const views = [
 
 const $ = (id) => document.getElementById(id);
 const API_BASE = (window.MOTOFIX_API_BASE_URL || "").replace(/\/$/, "");
+const LOCAL_HOSTS = ["localhost", "127.0.0.1", ""];
+const DEMO_MODE = !API_BASE && !LOCAL_HOSTS.includes(window.location.hostname);
 const money = (v) => Number(v || 0).toLocaleString("es-CO", { style: "currency", currency: "COP" });
+
+const demoDb = createDemoDb();
 
 function toast(message) {
   $("toast").textContent = message;
@@ -33,6 +37,7 @@ function toast(message) {
 }
 
 async function api(path, options = {}) {
+  if (DEMO_MODE) return demoApi(path, options);
   const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
   if (state.token) headers.Authorization = `Bearer ${state.token}`;
   const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
@@ -47,6 +52,397 @@ async function api(path, options = {}) {
   if (response.status === 204) return null;
   const text = await response.text();
   return text ? JSON.parse(text) : null;
+}
+
+function createDemoDb() {
+  const now = new Date();
+  const tomorrow = new Date(now.getTime() + 86400000);
+  const later = new Date(now.getTime() + 172800000);
+  return {
+    ids: { users: 6, motorcycles: 4, appointments: 3, orders: 2, services: 3, parts: 2, payments: 2, notifications: 3, auditLogs: 5 },
+    users: [
+      { id: 1, name: "Miguel Pantoja", email: "admin@motofix.com", role: "ROLE_ADMINISTRATOR", userType: "Administrator" },
+      { id: 2, name: "Laura Gomez", email: "laura@demo.com", role: "ROLE_CUSTOMER", userType: "Customer" },
+      { id: 3, name: "Carlos Rojas", email: "carlos@demo.com", role: "ROLE_CUSTOMER", userType: "Customer" },
+      { id: 4, name: "Andres Mecanico", email: "andres@motofix.com", role: "ROLE_MECHANIC", userType: "Mechanic" },
+      { id: 5, name: "Sofia Tecnica", email: "sofia@motofix.com", role: "ROLE_MECHANIC", userType: "Mechanic" }
+    ],
+    motorcycles: [
+      { id: 1, brand: "Yamaha", model: "FZ 2.0", year: 2021, mileage: 18400, plate: "ABC12D", vin: "YAMFZ2021", customerId: 2, customerName: "Laura Gomez" },
+      { id: 2, brand: "Honda", model: "CB 190R", year: 2020, mileage: 22650, plate: "XYZ98F", vin: "HONCB190", customerId: 3, customerName: "Carlos Rojas" },
+      { id: 3, brand: "Suzuki", model: "Gixxer", year: 2022, mileage: 9100, plate: "JKL45G", vin: "SUZGIX22", customerId: 2, customerName: "Laura Gomez" }
+    ],
+    appointments: [
+      { id: 1, customerId: 2, customerName: "Laura Gomez", motorcycleId: 1, motorcycle: "Yamaha FZ 2.0 ABC12D", scheduledAt: tomorrow.toISOString(), status: "SCHEDULED", reason: "Cambio de aceite", notes: "Cliente espera entrega el mismo dia", createdAt: now.toISOString() },
+      { id: 2, customerId: 3, customerName: "Carlos Rojas", motorcycleId: 2, motorcycle: "Honda CB 190R XYZ98F", scheduledAt: later.toISOString(), status: "CHECKED_IN", reason: "Revision de frenos", notes: "Ruido al frenar", createdAt: now.toISOString() }
+    ],
+    services: [
+      { id: 1, name: "Cambio de aceite premium", type: "OIL_CHANGE", basePrice: 55000, estimatedTime: 45, calculatedCost: 76000, description: "Aceite sintetico, filtro y revision rapida" },
+      { id: 2, name: "Reparacion de frenos", type: "BRAKE_REPAIR", basePrice: 85000, estimatedTime: 90, calculatedCost: 135000, description: "Pastillas, ajuste y prueba de ruta" },
+      { id: 3, name: "Inspeccion general", type: "GENERAL_INSPECTION", basePrice: 45000, estimatedTime: 60, calculatedCost: 60000, description: "Checklist completo de seguridad" }
+    ],
+    parts: [
+      { id: 1, name: "Filtro aceite universal", brand: "MotoPro", sku: "FLT-001", unitPrice: 21000, stock: 20 },
+      { id: 2, name: "Pastillas freno disco", brand: "BrakeMax", sku: "BRK-220", unitPrice: 48000, stock: 6 }
+    ],
+    orders: [],
+    payments: [],
+    notifications: [
+      { id: 1, userId: 2, message: "Tu moto fue recibida en taller.", channel: "EMAIL", readFlag: false, sentAt: now.toISOString() },
+      { id: 2, userId: 3, message: "Diagnostico listo para aprobacion.", channel: "SMS", readFlag: false, sentAt: now.toISOString() }
+    ],
+    auditLogs: [
+      { id: 1, action: "SYSTEM_READY", detail: "Modo demo Vercel iniciado", createdAt: now.toISOString() },
+      { id: 2, action: "ORDER_CREATED", detail: "Orden demo creada para validar flujo", createdAt: now.toISOString() },
+      { id: 3, action: "PAYMENT_CONFIRMED", detail: "Pago demo confirmado", createdAt: now.toISOString() },
+      { id: 4, action: "STOCK_CHECKED", detail: "Proveedor local demo activo", createdAt: now.toISOString() }
+    ]
+  };
+}
+
+demoDb.orders.push({
+  id: 1,
+  customerId: 2,
+  customerName: "Laura Gomez",
+  motorcycleId: 1,
+  motorcycle: "Yamaha FZ 2.0",
+  mechanicId: 4,
+  mechanicName: "Andres Mecanico",
+  status: "IN_PROGRESS",
+  diagnostic: "Aceite degradado y filtro obstruido.",
+  createdAt: new Date().toISOString(),
+  finishedAt: null,
+  services: [demoDb.services[0]],
+  spareParts: [demoDb.parts[0]],
+  total: 97000
+});
+demoDb.payments.push({ id: 1, orderId: 1, amount: 97000, type: "CARD", status: "CONFIRMED", paidAt: new Date().toISOString() });
+
+async function demoApi(path, options = {}) {
+  await new Promise(resolve => setTimeout(resolve, 120));
+  const method = (options.method || "GET").toUpperCase();
+  const body = options.body ? JSON.parse(options.body) : {};
+  const [urlPath, query = ""] = path.split("?");
+  const params = new URLSearchParams(query);
+  const parts = urlPath.split("/").filter(Boolean);
+
+  if (urlPath === "/api/auth/login" && method === "POST") {
+    return { token: "demo-token", user: demoDb.users[0] };
+  }
+  if (urlPath === "/api/auth/me") return demoDb.users[0];
+  if (urlPath === "/api/auth/register" && method === "POST") {
+    const user = addRow("users", { name: body.name, email: body.email, role: body.role, userType: userType(body.role) });
+    log("USER_CREATED", `${user.name} registrado`);
+    return { token: "demo-token", user };
+  }
+  if (urlPath === "/api/auth/validate") return { valid: true };
+  if (urlPath === "/api/health") return { status: "UP", service: "motofix-system-demo", checkedAt: new Date().toISOString() };
+
+  if (urlPath === "/api/users" && method === "GET") return demoDb.users;
+  if (parts[1] === "users") return handleUsers(parts, method, body, params);
+  if (urlPath === "/api/motorcycles" && method === "GET") return demoDb.motorcycles;
+  if (parts[1] === "motorcycles") return handleMotorcycles(parts, method, body, params);
+  if (urlPath === "/api/appointments" && method === "GET") return demoDb.appointments;
+  if (parts[1] === "appointments") return handleAppointments(parts, method, body, params);
+  if (urlPath === "/api/service-orders" && method === "GET") return demoDb.orders;
+  if (parts[1] === "service-orders") return handleOrders(parts, method, body, params);
+  if (urlPath === "/api/maintenance-services" && method === "GET") return demoDb.services;
+  if (parts[1] === "maintenance-services") return handleServices(parts, method, body);
+  if (urlPath === "/api/spare-parts" && method === "GET") return demoDb.parts;
+  if (parts[1] === "spare-parts") return handleParts(parts, method, body, params);
+  if (urlPath === "/api/payments" && method === "GET") return demoDb.payments;
+  if (parts[1] === "payments") return handlePayments(parts, method, body);
+  if (parts[1] === "notifications") return handleNotifications(parts, method, body);
+  if (urlPath === "/api/audit-logs") return [...demoDb.auditLogs].reverse();
+  if (parts[1] === "reports") return reportFor(parts[2]);
+  throw new Error("Ruta demo no implementada");
+}
+
+function addRow(collection, row) {
+  const next = { id: demoDb.ids[collection]++, ...row };
+  demoDb[collection].push(next);
+  return next;
+}
+
+function findRow(collection, id) {
+  const row = demoDb[collection].find(item => item.id === Number(id));
+  if (!row) throw new Error("Registro no encontrado");
+  return row;
+}
+
+function deleteRow(collection, id) {
+  demoDb[collection] = demoDb[collection].filter(item => item.id !== Number(id));
+}
+
+function log(action, detail) {
+  addRow("auditLogs", { action, detail, createdAt: new Date().toISOString() });
+}
+
+function userType(role) {
+  return ({ ROLE_CUSTOMER: "Customer", ROLE_MECHANIC: "Mechanic", ROLE_ADMINISTRATOR: "Administrator" })[role] || "User";
+}
+
+function handleUsers(parts, method, body, params) {
+  const id = parts[2];
+  if (method === "GET") return findRow("users", id);
+  if (method === "PUT") {
+    const user = findRow("users", id);
+    Object.assign(user, clean(body));
+    log("USER_UPDATED", `${user.name} actualizado`);
+    return user;
+  }
+  if (method === "PATCH" && parts[3] === "role") {
+    const user = findRow("users", id);
+    user.role = params.get("role") || user.role;
+    user.userType = userType(user.role);
+    log("USER_ROLE_CHANGED", `${user.name} ahora es ${user.role}`);
+    return user;
+  }
+  if (method === "DELETE") {
+    deleteRow("users", id);
+    log("USER_DELETED", `Usuario #${id} eliminado`);
+    return null;
+  }
+}
+
+function handleMotorcycles(parts, method, body, params) {
+  if (method === "POST") {
+    const customer = findRow("users", body.customerId);
+    const moto = addRow("motorcycles", { ...body, customerName: customer.name });
+    log("MOTORCYCLE_CREATED", `${moto.brand} ${moto.model} registrada`);
+    return moto;
+  }
+  const id = parts[2];
+  if (method === "GET" && parts[2] === "customer") return demoDb.motorcycles.filter(m => m.customerId === Number(parts[3]));
+  if (method === "GET") return findRow("motorcycles", id);
+  if (method === "PATCH" && parts[3] === "mileage") {
+    const moto = findRow("motorcycles", id);
+    moto.mileage = Number(params.get("mileage"));
+    log("MOTORCYCLE_MILEAGE_UPDATED", `${moto.plate || moto.id} actualizada`);
+    return moto;
+  }
+  if (method === "DELETE") {
+    deleteRow("motorcycles", id);
+    log("MOTORCYCLE_DELETED", `Moto #${id} eliminada`);
+    return null;
+  }
+}
+
+function handleAppointments(parts, method, body, params) {
+  if (method === "POST") {
+    const customer = findRow("users", body.customerId);
+    const moto = findRow("motorcycles", body.motorcycleId);
+    const appointment = addRow("appointments", {
+      ...body,
+      customerName: customer.name,
+      motorcycle: `${moto.brand} ${moto.model} ${moto.plate || ""}`.trim(),
+      status: "SCHEDULED",
+      createdAt: new Date().toISOString()
+    });
+    log("APPOINTMENT_CREATED", `Cita #${appointment.id} creada`);
+    return appointment;
+  }
+  const id = parts[2];
+  if (method === "PATCH") {
+    const appointment = findRow("appointments", id);
+    appointment.status = params.get("status") || appointment.status;
+    log("APPOINTMENT_STATUS_CHANGED", `Cita #${id} a ${appointment.status}`);
+    return appointment;
+  }
+  if (method === "DELETE") {
+    deleteRow("appointments", id);
+    log("APPOINTMENT_DELETED", `Cita #${id} eliminada`);
+    return null;
+  }
+}
+
+function handleOrders(parts, method, body, params) {
+  if (method === "POST") {
+    const customer = findRow("users", body.customerId);
+    const moto = findRow("motorcycles", body.motorcycleId);
+    const order = addRow("orders", {
+      customerId: customer.id,
+      customerName: customer.name,
+      motorcycleId: moto.id,
+      motorcycle: `${moto.brand} ${moto.model}`,
+      mechanicId: null,
+      mechanicName: null,
+      status: "PENDING",
+      diagnostic: body.diagnostic || "",
+      createdAt: new Date().toISOString(),
+      finishedAt: null,
+      services: [],
+      spareParts: [],
+      total: 0
+    });
+    log("ORDER_CREATED", `Orden #${order.id} creada`);
+    return order;
+  }
+  const id = parts[2];
+  const order = findRow("orders", id);
+  if (method === "GET") return parts[3] === "total" ? { total: order.total } : order;
+  if (method === "PATCH" && parts[3] === "status") order.status = params.get("status") || order.status;
+  if (method === "PATCH" && parts[3] === "mechanic") {
+    const mechanic = findRow("users", parts[4]);
+    order.mechanicId = mechanic.id;
+    order.mechanicName = mechanic.name;
+    order.status = "DIAGNOSIS";
+  }
+  if (method === "PATCH" && parts[3] === "diagnostic") {
+    order.diagnostic = body.diagnostic;
+    order.status = "DIAGNOSIS";
+  }
+  if (method === "PATCH" && parts[3] === "finish") {
+    order.status = "FINISHED";
+    order.finishedAt = new Date().toISOString();
+  }
+  if (method === "PATCH" && parts[3] === "cancel") order.status = "CANCELLED";
+  if (method === "POST" && parts[3] === "services") order.services.push(findRow("services", parts[4]));
+  if (method === "POST" && parts[3] === "spare-parts") {
+    const part = findRow("parts", parts[4]);
+    if (part.stock > 0) part.stock -= 1;
+    order.spareParts.push(part);
+  }
+  recalcOrder(order);
+  log("ORDER_UPDATED", `Orden #${id} actualizada`);
+  return order;
+}
+
+function handleServices(parts, method, body) {
+  if (method === "POST") {
+    const service = addRow("services", servicePayload(body));
+    log("SERVICE_CREATED", `${service.name} creado`);
+    return service;
+  }
+  const service = findRow("services", parts[2]);
+  if (method === "PUT") {
+    Object.assign(service, servicePayload(body));
+    log("SERVICE_UPDATED", `${service.name} actualizado`);
+    return service;
+  }
+  if (method === "DELETE") {
+    deleteRow("services", parts[2]);
+    log("SERVICE_DELETED", `Servicio #${parts[2]} eliminado`);
+    return null;
+  }
+  return service;
+}
+
+function handleParts(parts, method, body, params) {
+  if (parts[2] === "provider") {
+    const sku = parts[3];
+    const part = demoDb.parts.find(item => item.sku === sku);
+    return { sku, available: Boolean(part?.stock), stock: part?.stock || 0, providerName: "MotoFix Local Provider" };
+  }
+  if (method === "POST") {
+    const part = addRow("parts", partPayload(body));
+    log("SPARE_PART_CREATED", `${part.name} creado`);
+    return part;
+  }
+  const part = findRow("parts", parts[2]);
+  if (method === "GET" && parts[3] === "stock") return { stock: part.stock };
+  if (method === "PATCH" && parts[3] === "stock") {
+    const quantity = Number(params.get("quantity") || 0);
+    part.stock += parts[4] === "increase" ? quantity : -quantity;
+    if (part.stock < 0) part.stock = 0;
+    log("STOCK_UPDATED", `${part.name}: ${part.stock}`);
+    return part;
+  }
+  if (method === "PUT") {
+    Object.assign(part, partPayload(body));
+    log("SPARE_PART_UPDATED", `${part.name} actualizado`);
+    return part;
+  }
+  if (method === "DELETE") {
+    deleteRow("parts", parts[2]);
+    log("SPARE_PART_DELETED", `Repuesto #${parts[2]} eliminado`);
+    return null;
+  }
+}
+
+function handlePayments(parts, method, body) {
+  if (method === "POST") {
+    const order = findRow("orders", body.orderId);
+    const payment = addRow("payments", { orderId: order.id, amount: order.total, type: body.type, status: "PENDING", paidAt: null });
+    log("PAYMENT_CREATED", `Pago #${payment.id} registrado`);
+    return payment;
+  }
+  if (method === "GET" && parts[2] === "order") return demoDb.payments.find(p => p.orderId === Number(parts[3]));
+  if (method === "PATCH" && parts[3] === "confirm") {
+    const payment = findRow("payments", parts[2]);
+    payment.status = "CONFIRMED";
+    payment.paidAt = new Date().toISOString();
+    log("PAYMENT_CONFIRMED", `Pago #${payment.id} confirmado`);
+    return payment;
+  }
+}
+
+function handleNotifications(parts, method, body) {
+  if (method === "POST") {
+    const notification = addRow("notifications", { ...body, readFlag: false, sentAt: new Date().toISOString() });
+    log("NOTIFICATION_SENT", `Notificacion #${notification.id} enviada`);
+    return notification;
+  }
+  if (method === "GET" && parts[2] === "user") return demoDb.notifications.filter(n => n.userId === Number(parts[3]));
+  if (method === "PATCH" && parts[3] === "read") {
+    const notification = findRow("notifications", parts[2]);
+    notification.readFlag = true;
+    return notification;
+  }
+}
+
+function servicePayload(body) {
+  const calculatedCost = Number(body.basePrice || 0) + Number(body.filterCost || 0) + Number(body.padsCost || 0) + Number(body.laborCost || 0) + Number(body.checklistItems || 0) * 1500;
+  return {
+    name: body.name,
+    type: body.type,
+    basePrice: Number(body.basePrice || 0),
+    estimatedTime: Number(body.estimatedTime || 0),
+    calculatedCost: calculatedCost || Number(body.basePrice || 0),
+    description: `${body.type || "Servicio"} operativo`
+  };
+}
+
+function partPayload(body) {
+  return {
+    name: body.name,
+    brand: body.brand,
+    sku: body.sku,
+    unitPrice: Number(body.unitPrice || 0),
+    stock: Number(body.initialStock || body.stock || 0)
+  };
+}
+
+function clean(row) {
+  return Object.fromEntries(Object.entries(row).filter(([, value]) => value !== null && value !== ""));
+}
+
+function recalcOrder(order) {
+  order.total = [...(order.services || []), ...(order.spareParts || [])]
+    .reduce((sum, item) => sum + Number(item.calculatedCost || item.unitPrice || 0), 0);
+}
+
+function reportFor(type) {
+  if (type === "orders") return groupCount(demoDb.orders, "status");
+  if (type === "payments") return groupAmount(demoDb.payments, "status", "amount");
+  if (type === "inventory") return demoDb.parts.map(part => ({ name: part.name, count: part.stock, amount: Number(part.unitPrice || 0) * Number(part.stock || 0) }));
+  if (type === "services") return groupCount(demoDb.services, "type");
+  return [];
+}
+
+function groupCount(rows, key) {
+  return Object.entries(rows.reduce((acc, row) => ({ ...acc, [row[key]]: (acc[row[key]] || 0) + 1 }), {}))
+    .map(([name, count]) => ({ name, count, amount: 0 }));
+}
+
+function groupAmount(rows, key, amountKey) {
+  return Object.values(rows.reduce((acc, row) => {
+    const name = row[key];
+    acc[name] ||= { name, count: 0, amount: 0 };
+    acc[name].count += 1;
+    acc[name].amount += Number(row[amountKey] || 0);
+    return acc;
+  }, {}));
 }
 
 function setStatus(text) {
