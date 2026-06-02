@@ -67,6 +67,9 @@ public class PaymentServiceImpl implements PaymentService {
     public PaymentResponse confirm(Long id) {
         Payment payment = paymentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Payment not found"));
+        if (payment.getStatus() == PaymentStatus.CONFIRMED) {
+            throw new BusinessException("Payment is already confirmed");
+        }
         payment.processPayment();
         auditLogService.record("PAYMENT_CONFIRMED", "Payment #" + id + " confirmed");
         return paymentMapper.toResponse(payment);

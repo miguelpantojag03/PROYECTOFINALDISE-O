@@ -10,6 +10,7 @@ import com.motofix.mapper.UserMapper;
 import com.motofix.model.RoleName;
 import com.motofix.repository.RoleRepository;
 import com.motofix.repository.UserRepository;
+import com.motofix.service.AuditLogService;
 import com.motofix.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -26,6 +27,7 @@ public class UserServiceImpl implements UserService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
+    private final AuditLogService auditLogService;
 
     @Override
     public UserResponse create(UserCreateRequest request) {
@@ -39,7 +41,9 @@ public class UserServiceImpl implements UserService {
         user.setEmail(request.email());
         user.setPassword(passwordEncoder.encode(request.password()));
         user.setRole(role);
-        return userMapper.toResponse(userRepository.save(user));
+        User saved = userRepository.save(user);
+        auditLogService.record("USER_CREATED", "User #" + saved.getId() + " created with role " + request.role());
+        return userMapper.toResponse(saved);
     }
 
     @Override
@@ -71,12 +75,14 @@ public class UserServiceImpl implements UserService {
             if (request.phone() != null) administrator.setPhone(request.phone());
             if (request.address() != null) administrator.setAddress(request.address());
         }
+        auditLogService.record("USER_UPDATED", "User #" + id + " updated");
         return userMapper.toResponse(user);
     }
 
     @Override
     public void delete(Long id) {
         userRepository.delete(getUser(id));
+        auditLogService.record("USER_DELETED", "User #" + id + " deleted");
     }
 
     @Override
@@ -85,6 +91,7 @@ public class UserServiceImpl implements UserService {
         Role role = roleRepository.findByName(roleName)
                 .orElseThrow(() -> new ResourceNotFoundException("Role not found"));
         user.setRole(role);
+        auditLogService.record("USER_ROLE_CHANGED", "User #" + id + " changed to role " + roleName);
         return userMapper.toResponse(user);
     }
 

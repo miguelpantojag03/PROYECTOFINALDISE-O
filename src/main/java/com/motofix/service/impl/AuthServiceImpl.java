@@ -41,9 +41,13 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public boolean validateToken(String token) {
-        String cleanToken = token.replace("Bearer ", "");
-        String email = jwtService.extractEmail(cleanToken);
-        return jwtService.isValid(cleanToken, email);
+        try {
+            String cleanToken = token.replace("Bearer ", "");
+            String email = jwtService.extractEmail(cleanToken);
+            return jwtService.isValid(cleanToken, email);
+        } catch (RuntimeException exception) {
+            return false;
+        }
     }
 
     @Override

@@ -4,10 +4,12 @@ import com.motofix.dto.MotorcycleRequest;
 import com.motofix.dto.MotorcycleResponse;
 import com.motofix.entity.Customer;
 import com.motofix.entity.Motorcycle;
+import com.motofix.exception.BusinessException;
 import com.motofix.exception.ResourceNotFoundException;
 import com.motofix.mapper.MotorcycleMapper;
 import com.motofix.repository.CustomerRepository;
 import com.motofix.repository.MotorcycleRepository;
+import com.motofix.service.AuditLogService;
 import com.motofix.service.MotorcycleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,7 @@ public class MotorcycleServiceImpl implements MotorcycleService {
     private final MotorcycleRepository motorcycleRepository;
     private final CustomerRepository customerRepository;
     private final MotorcycleMapper motorcycleMapper;
+    private final AuditLogService auditLogService;
 
     @Override
     public MotorcycleResponse create(MotorcycleRequest request) {
@@ -36,7 +39,9 @@ public class MotorcycleServiceImpl implements MotorcycleService {
                 .vin(request.vin())
                 .customer(customer)
                 .build();
-        return motorcycleMapper.toResponse(motorcycleRepository.save(motorcycle));
+        Motorcycle saved = motorcycleRepository.save(motorcycle);
+        auditLogService.record("MOTORCYCLE_CREATED", "Motorcycle #" + saved.getId() + " created for customer #" + customer.getId());
+        return motorcycleMapper.toResponse(saved);
     }
 
     @Override
@@ -59,14 +64,19 @@ public class MotorcycleServiceImpl implements MotorcycleService {
 
     @Override
     public MotorcycleResponse updateMileage(Long id, Integer mileage) {
+        if (mileage == null || mileage < 0) {
+            throw new BusinessException("Mileage must be zero or greater");
+        }
         Motorcycle motorcycle = getMotorcycle(id);
         motorcycle.updateMileage(mileage);
+        auditLogService.record("MOTORCYCLE_MILEAGE_UPDATED", "Motorcycle #" + id + " mileage updated to " + mileage);
         return motorcycleMapper.toResponse(motorcycle);
     }
 
     @Override
     public void delete(Long id) {
         motorcycleRepository.delete(getMotorcycle(id));
+        auditLogService.record("MOTORCYCLE_DELETED", "Motorcycle #" + id + " deleted");
     }
 
     private Motorcycle getMotorcycle(Long id) {

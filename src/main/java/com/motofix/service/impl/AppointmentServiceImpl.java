@@ -75,6 +75,7 @@ public class AppointmentServiceImpl implements AppointmentService {
     @Override
     public AppointmentResponse changeStatus(Long id, AppointmentStatus status) {
         Appointment appointment = getAppointment(id);
+        validateTransition(appointment.getStatus(), status);
         appointment.setStatus(status);
         auditLogService.record("APPOINTMENT_STATUS_CHANGED", "Appointment #" + id + " changed to " + status);
         return toResponse(appointment);
@@ -105,5 +106,19 @@ public class AppointmentServiceImpl implements AppointmentService {
                 appointment.getNotes(),
                 appointment.getCreatedAt()
         );
+    }
+
+    private void validateTransition(AppointmentStatus current, AppointmentStatus next) {
+        if (current == AppointmentStatus.COMPLETED || current == AppointmentStatus.CANCELLED) {
+            throw new BusinessException("Closed appointments cannot be changed");
+        }
+        if (current == AppointmentStatus.SCHEDULED &&
+                !(next == AppointmentStatus.CHECKED_IN || next == AppointmentStatus.CANCELLED)) {
+            throw new BusinessException("Scheduled appointments can only be checked in or cancelled");
+        }
+        if (current == AppointmentStatus.CHECKED_IN &&
+                !(next == AppointmentStatus.COMPLETED || next == AppointmentStatus.CANCELLED)) {
+            throw new BusinessException("Checked-in appointments can only be completed or cancelled");
+        }
     }
 }
